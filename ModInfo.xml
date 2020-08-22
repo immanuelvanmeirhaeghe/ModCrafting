@@ -1,0 +1,10 @@
+<Mod ID="ModCrafting">
+  <Compatible>1.8.1</Compatible>
+  <Name>
+    <EN>ModCrafting</EN>
+  </Name>
+  <Description>
+    <EN>ModCrafting</EN>
+  </Description>
+  <Version>1.0.0.0</Version>
+</Mod>
