@@ -122,7 +122,7 @@ namespace ModCrafting
         private void InitModUI()
         {
             GUI.Box(new Rect(1000f, 500f, 450f, 150f), "ModCrafting UI - Press HOME to open/close", GUI.skin.window);
-            if (GUI.Button(new Rect(1420f, 500f, 15f, 15f), "X", GUI.skin.button))
+            if (GUI.Button(new Rect(1420f, 500f, 20f, 20f), "X", GUI.skin.button))
             {
                 showUI = false;
                 EnableCursor(false);
@@ -212,7 +212,6 @@ namespace ModCrafting
             try
             {
                 bambooBidonToUse = CreateBambooContainer();
-                itemsManager.m_CreationsData.Add((int)bambooBidonToUse.m_Info.m_ID, (int)bambooBidonToUse.m_Info.m_ID);
                 return bambooBidonToUse;
             }
             catch (Exception exc)
@@ -220,22 +219,6 @@ namespace ModCrafting
                 ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CraftBambooBidon)}] throws exception: {exc.Message}");
                 return bambooBidonToUse;
             }
-        }
-
-        private static Item CreateBambooContainer()
-        {
-            string itemName = ItemID.Bamboo_Container.ToString();
-            GameObject prefab = GreenHellGame.Instance.GetPrefab(itemName);
-            Item bambooContainer = CreateItem(prefab, true, player.transform.position + player.transform.forward * 4f, player.transform.rotation);
-            bambooContainer.m_Info = (LiquidContainerInfo)CreateItemInfo(bambooContainer, ItemID.Bamboo_Container, itemName, CreateBambooContainerComponents(), true, true);
-            CalcHealth(bambooContainer);
-            bambooContainer.Initialize(true);
-            player.AddKnownItem(ItemID.Bamboo_Container);
-            EventsManager.OnEvent(Enums.Event.Craft, 1, (int)ItemID.Bamboo_Container);
-            craftingSkill.OnSkillAction();
-            itemsManager.m_CreationsData.Add((int)bambooContainer.m_Info.m_ID, (int)bambooContainer.m_Info.m_ID);
-            itemsManager.OnCreateItem(ItemID.Bamboo_Container);
-            return bambooContainer;
         }
 
         public static Item CraftHammock()
@@ -253,13 +236,49 @@ namespace ModCrafting
             }
         }
 
+        private static Item CreateBambooContainer()
+        {
+            string m_InfoName = ItemID.Bamboo_Container.ToString();
+            GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
+            Item bambooContainer = CreateItem(prefab, true, player.transform.position + player.transform.forward * 4f, player.transform.rotation);
+            bambooContainer.m_InfoName = m_InfoName;
+            LiquidContainerInfo m_Info = (LiquidContainerInfo)CreateItemInfo(bambooContainer, ItemID.Bamboo_Container, m_InfoName, CreateBambooContainerComponents(), true, true);
+            m_Info.m_CantDestroy = false;
+            m_Info.m_UsedForCrafting = false;
+            bambooContainer.m_Info = m_Info;
+            CalcHealth(bambooContainer);
+            bambooContainer.Initialize(true);
+            player.AddKnownItem(ItemID.Bamboo_Container);
+            EventsManager.OnEvent(Enums.Event.Craft, 1, (int)ItemID.Bamboo_Container);
+            craftingSkill.OnSkillAction();
+            itemsManager.m_CreationsData.Add((int)bambooContainer.m_Info.m_ID, (int)bambooContainer.m_Info.m_ID);
+            itemsManager.OnCreateItem(ItemID.Bamboo_Container);
+            return bambooContainer;
+        }
+
         private static Item CreateHammock()
         {
             string m_InfoName = ItemID.village_hammock_a.ToString();
             GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
             Item hammockToUse = CreateItem(prefab, true, player.transform.position + player.transform.forward * 4f, player.transform.rotation);
             hammockToUse.m_InfoName = m_InfoName;
-            hammockToUse.m_Info = (ConstructionInfo)CreateItemInfo(hammockToUse, ItemID.village_hammock_a, m_InfoName, CreateHammockComponents(), false, false);
+            ConstructionInfo m_Info = (ConstructionInfo)CreateItemInfo(hammockToUse, ItemID.village_hammock_a, m_InfoName, CreateHammockComponents(), false, false);
+            m_Info.m_CantDestroy = false;
+            m_Info.m_UsedForCrafting = false;
+            m_Info.m_ConstructionType = ConstructionType.Shelter;
+            m_Info.m_HitsCountToDestroy = 3;
+            m_Info.m_PlaceToAttachNames = new List<string>
+            {
+                ItemID.building_frame.ToString(),
+                ItemID.building_bamboo_frame.ToString()
+            };
+            m_Info.m_PlaceToAttachToNames = new List<string>
+            {
+                ItemID.building_wall.ToString(),
+                ItemID.building_bamboo_wall.ToString()
+            };
+            m_Info.m_Type = ItemType.Construction;
+            hammockToUse.m_Info = m_Info;
             CalcHealth(hammockToUse);
             hammockToUse.Initialize(true);
             player.AddKnownItem(ItemID.village_hammock_a);
