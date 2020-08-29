@@ -1,6 +1,8 @@
 using Enums;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using UnityEngine;
 
 namespace ModCrafting
@@ -26,8 +28,11 @@ namespace ModCrafting
 
         private static CraftingSkill craftingSkill;
 
-        private bool m_IsOptionActive;
-        public bool UseOption => m_IsOptionActive;
+        private static ConstructionController constructionController;
+
+        private static InventoryBackpack inventoryBackpack;
+
+        public bool UseOption { get; private set; }
 
         /// <summary>
         /// ModAPI required security check to enable this mod feature for multiplayer.
@@ -35,7 +40,7 @@ namespace ModCrafting
         /// Based on request in chat: use  !requestMods in chat as client to request the host to activate mods for them.
         /// </summary>
         /// <returns>true if enabled, else false</returns>
-        public bool IsModActiveForMultiplayer => FindObjectOfType(typeof(ModManager.ModManager)) != null ? ModManager.ModManager.AllowModsForMultiplayer : false;
+        public bool IsModActiveForMultiplayer => FindObjectOfType(typeof(ModManager.ModManager)) != null && ModManager.ModManager.AllowModsForMultiplayer;
 
         public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
 
@@ -72,7 +77,7 @@ namespace ModCrafting
                 );
         }
 
-        private static void EnableCursor(bool enabled = false)
+        private void EnableCursor(bool enabled = false)
         {
             CursorManager.Get().ShowCursor(enabled, false);
             player = Player.Get();
@@ -107,6 +112,62 @@ namespace ModCrafting
                     EnableCursor(false);
                 }
             }
+            if (Input.GetKeyDown(KeyCode.Delete))
+            {
+                InitData();
+                PrintDebugActions();
+            }
+        }
+
+        private static void TryClearItems()
+        {
+            try
+            {
+                var list = itemsManager.GetAllInfos().Values.Where(info =>
+                                                                                                                                    !info.m_Item.IsImmutableSceneObject()
+                                                                                                                              && !info.m_Item.IsPlayer()
+                                                                                                                              && !info.m_Item.IsHumanAI()
+                                                                                                                              && !info.m_Item.IsAI()
+                                                                                                                              && info.m_CanBeDamaged
+                                                                                                                              && info.IsDestroyableObject()
+                                                                                                                            );
+                foreach (ItemInfo itemInfo in list)
+                {
+                    Destroy(itemInfo.m_Item.gameObject);
+                }
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(TryClearItems)}] throws exception: {exc.Message}");
+            }
+        }
+
+        private static void PrintDebugActions()
+        {
+            StringBuilder printed = new StringBuilder("PLAYER INPUT ACTIONS");
+            try
+            {
+                List<int> playerInputActions = new List<int>();
+                player.GetInputActions(ref playerInputActions);
+                foreach (int action in playerInputActions)
+                {
+                    printed.AppendLine($"\nAction\t{action}");
+                }
+                printed.AppendLine($"\nPLAYERCONTROLLER INPUT ACTIONS");
+                PlayerController blowgunController = player.GetController(PlayerControllerType.Blowpipe);
+                printed.AppendLine($"\n(int)PlayerControllerType.Blowpipe\t{(int)PlayerControllerType.Blowpipe}");
+                List<int> blowgunControllerInputActions = new List<int>();
+                blowgunController.GetInputActions(ref blowgunControllerInputActions);
+                foreach (int action in blowgunControllerInputActions)
+                {
+                    printed.AppendLine($"\nAction\t{action}");
+                }
+                ModAPI.Log.Write($"{printed.ToString()}");
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(PrintDebugActions)}] throws exception: {exc.Message}");
+            }
         }
 
         private void OnGUI()
@@ -122,7 +183,7 @@ namespace ModCrafting
         private void InitModUI()
         {
             GUI.Box(new Rect(1000f, 500f, 450f, 150f), "ModCrafting UI - Press HOME to open/close", GUI.skin.window);
-            if (GUI.Button(new Rect(1420f, 500f, 20f, 20f), "X", GUI.skin.button))
+            if (GUI.Button(new Rect(1430f, 500f, 20f, 20f), "X", GUI.skin.button))
             {
                 showUI = false;
                 EnableCursor(false);
@@ -136,10 +197,34 @@ namespace ModCrafting
                 EnableCursor(false);
             }
 
-            GUI.Label(new Rect(1020f, 540f, 200f, 20f), "1 x rope, 1 x bamboo log", GUI.skin.label);
-            if (GUI.Button(new Rect(1270f, 540f, 150f, 20f), "Craft bamboo bidon", GUI.skin.button))
+            GUI.Label(new Rect(1020f, 540f, 200f, 20f), "1 x bamboo log", GUI.skin.label);
+            if (GUI.Button(new Rect(1270f, 540f, 150f, 20f), "Craft bamboo bowl", GUI.skin.button))
+            {
+                //OnClickCraftBambooBowlButton();
+                showUI = false;
+                EnableCursor(false);
+            }
+
+            GUI.Label(new Rect(1020f, 560f, 200f, 20f), "1 x rope, 1 x bamboo bowl", GUI.skin.label);
+            if (GUI.Button(new Rect(1270f, 560f, 150f, 20f), "Craft bamboo container", GUI.skin.button))
             {
                 OnClickCraftBambooBidonButton();
+                showUI = false;
+                EnableCursor(false);
+            }
+
+            GUI.Label(new Rect(1020f, 580f, 200f, 20f), "1 x rope, 1 x bamboo long stick", GUI.skin.label);
+            if (GUI.Button(new Rect(1270f, 580f, 150f, 20f), "Craft bamboo blowpipe", GUI.skin.button))
+            {
+                //OnClickCraftBlowgunButton();
+                showUI = false;
+                EnableCursor(false);
+            }
+
+            GUI.Label(new Rect(1020f, 600f, 200f, 20f), "1 x bamboo stick, 2 x feather", GUI.skin.label);
+            if (GUI.Button(new Rect(1270f, 600f, 150f, 20f), "Craft blowpipe dart", GUI.skin.button))
+            {
+                //OnClickCraftBlowgunArrowButton();
                 showUI = false;
                 EnableCursor(false);
             }
@@ -150,7 +235,7 @@ namespace ModCrafting
             if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
             {
                 GUI.Label(new Rect(30f, 70f, 200f, 20f), "Use OptionFeature", GUI.skin.label);
-                m_IsOptionActive = GUI.Toggle(new Rect(280f, 70f, 20f, 20f), m_IsOptionActive, "");
+                UseOption = GUI.Toggle(new Rect(280f, 70f, 20f, 20f), UseOption, "");
             }
             else
             {
@@ -160,25 +245,27 @@ namespace ModCrafting
             }
         }
 
-        private static void InitData()
+        private void InitData()
         {
             itemsManager = ItemsManager.Get();
             hUDManager = HUDManager.Get();
             player = Player.Get();
             craftingManager = CraftingManager.Get();
             craftingSkill = Skill.Get<CraftingSkill>();
+            constructionController = ConstructionController.Get();
+            inventoryBackpack = InventoryBackpack.Get();
         }
 
-        private static void InitSkinUI()
+        private void InitSkinUI()
         {
             GUI.skin = ModAPI.Interface.Skin;
         }
 
-        private static void OnClickCraftBambooBidonButton()
+        private void OnClickCraftBambooBidonButton()
         {
             try
             {
-                Item m_BambooBidon = CraftBambooBidon();
+                Item m_BambooBidon = CraftBambooContainer();
                 if (m_BambooBidon != null)
                 {
                     ShowHUDBigInfo($"Created 1 x {m_BambooBidon.m_Info.GetNameToDisplayLocalized()}", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
@@ -190,7 +277,7 @@ namespace ModCrafting
             }
         }
 
-        private static void OnClickCraftHammockButton()
+        private void OnClickCraftHammockButton()
         {
             try
             {
@@ -206,22 +293,63 @@ namespace ModCrafting
             }
         }
 
-        public static Item CraftBambooBidon()
+        private void OnClickCraftBambooBowlButton()
         {
-            Item bambooBidonToUse = null;
             try
             {
-                bambooBidonToUse = CreateBambooContainer();
-                return bambooBidonToUse;
+                Item m_BambooBowl = CraftBambooBowl();
+                if (m_BambooBowl != null)
+                {
+                    ShowHUDBigInfo($"Created 1 x {m_BambooBowl.m_Info.GetNameToDisplayLocalized()}", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                }
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CraftBambooBidon)}] throws exception: {exc.Message}");
-                return bambooBidonToUse;
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(OnClickCraftBambooBidonButton)}] throws exception: {exc.Message}");
             }
         }
 
-        public static Item CraftHammock()
+        private void OnClickCraftBlowgunButton()
+        {
+            try
+            {
+                Item m_Blowgun = CraftBambooBlowgun();
+                ShowHUDBigInfo($"Created 1 x Bamboo Blowpipe", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(OnClickCraftBlowgunButton)}] throws exception: {exc.Message}");
+            }
+        }
+
+        private void OnClickCraftBlowgunArrowButton()
+        {
+            try
+            {
+                GetMaxThreeBlowpipeArrow();
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(OnClickCraftBlowgunArrowButton)}] throws exception: {exc.Message}");
+            }
+        }
+
+        public Item CraftBambooContainer()
+        {
+            Item bambooContainerToUse = null;
+            try
+            {
+                bambooContainerToUse = CreateBambooContainer();
+                return bambooContainerToUse;
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CraftBambooContainer)}] throws exception: {exc.Message}");
+                return bambooContainerToUse;
+            }
+        }
+
+        public Item CraftHammock()
         {
             Item hammockToUse = null;
             try
@@ -231,80 +359,187 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CraftBambooBidon)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CraftHammock)}] throws exception: {exc.Message}");
                 return hammockToUse;
             }
         }
 
-        private static Item CreateBambooContainer()
+        public Item CraftBambooBowl()
         {
-            string m_InfoName = ItemID.Bamboo_Container.ToString();
-            GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
-            Item bambooContainer = CreateItem(prefab, true, player.transform.position + player.transform.forward * 4f, player.transform.rotation);
-            bambooContainer.m_InfoName = m_InfoName;
-            LiquidContainerInfo m_Info = (LiquidContainerInfo)CreateItemInfo(bambooContainer, ItemID.Bamboo_Container, m_InfoName, CreateBambooContainerComponents(), true, true);
-            m_Info.m_CantDestroy = false;
-            m_Info.m_UsedForCrafting = false;
-            bambooContainer.m_Info = m_Info;
-            CalcHealth(bambooContainer);
-            bambooContainer.Initialize(true);
-            player.AddKnownItem(ItemID.Bamboo_Container);
-            EventsManager.OnEvent(Enums.Event.Craft, 1, (int)ItemID.Bamboo_Container);
-            craftingSkill.OnSkillAction();
-            itemsManager.m_CreationsData.Add((int)bambooContainer.m_Info.m_ID, (int)bambooContainer.m_Info.m_ID);
-            itemsManager.OnCreateItem(ItemID.Bamboo_Container);
-            return bambooContainer;
-        }
-
-        private static Item CreateHammock()
-        {
-            string m_InfoName = ItemID.village_hammock_a.ToString();
-            GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
-            Item hammockToUse = CreateItem(prefab, true, player.transform.position + player.transform.forward * 4f, player.transform.rotation);
-            hammockToUse.m_InfoName = m_InfoName;
-            ConstructionInfo m_Info = (ConstructionInfo)CreateItemInfo(hammockToUse, ItemID.village_hammock_a, m_InfoName, CreateHammockComponents(), false, false);
-            m_Info.m_CantDestroy = false;
-            m_Info.m_UsedForCrafting = false;
-            m_Info.m_ConstructionType = ConstructionType.Shelter;
-            m_Info.m_HitsCountToDestroy = 3;
-            m_Info.m_PlaceToAttachNames = new List<string>
-            {
-                ItemID.building_frame.ToString(),
-                ItemID.building_bamboo_frame.ToString()
-            };
-            m_Info.m_PlaceToAttachToNames = new List<string>
-            {
-                ItemID.building_wall.ToString(),
-                ItemID.building_bamboo_wall.ToString()
-            };
-            m_Info.m_Type = ItemType.Construction;
-            hammockToUse.m_Info = m_Info;
-            CalcHealth(hammockToUse);
-            hammockToUse.Initialize(true);
-            player.AddKnownItem(ItemID.village_hammock_a);
-            EventsManager.OnEvent(Enums.Event.Craft, 1, (int)ItemID.village_hammock_a);
-            craftingSkill.OnSkillAction();
-            itemsManager.m_CreationsData.Add((int)hammockToUse.m_Info.m_ID, (int)hammockToUse.m_Info.m_ID);
-            itemsManager.OnCreateItem(ItemID.village_hammock_a);
-            return hammockToUse;
-        }
-
-        private static void AddCraftingItem(Item item, int count = 1)
-        {
+            Item bambooBowlToUse = null;
             try
             {
-                for (int i = 0; i < count; i++)
-                {
-                    CraftingManager.Get().AddItem(item, false);
-                }
+                bambooBowlToUse = CreateBambooBowl();
+                return bambooBowlToUse;
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(AddCraftingItem)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CraftBambooContainer)}] throws exception: {exc.Message}");
+                return bambooBowlToUse;
             }
         }
 
-        private static Item CreateItem(GameObject prefab, bool im_register, Vector3 position, Quaternion rotation)
+        public Item CraftBambooBlowgun()
+        {
+            Item blowgunToUse = null;
+            try
+            {
+                blowgunToUse = CreateBambooBlowgun();
+                return blowgunToUse;
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CraftBambooBlowgun)}] throws exception: {exc.Message}");
+                return blowgunToUse;
+            }
+        }
+
+        private Item CreateBambooContainer()
+        {
+            Item bambooContainer = null;
+            try
+            {
+                string m_InfoName = ItemID.Bamboo_Container.ToString();
+                GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
+                bambooContainer = CreateItem(prefab, true, player.transform.position + player.transform.forward * 2f, player.transform.rotation);
+                bambooContainer.m_InfoName = m_InfoName;
+                ItemInfo m_Info = CreateItemInfo(bambooContainer, ItemID.Bamboo_Container, BambooContainerComponents(), BambooContainerComponentsToReturn(), true, true);
+                m_Info.m_CantDestroy = false;
+                m_Info.m_UsedForCrafting = false;
+                ((LiquidContainerInfo)m_Info).m_LiquidType = LiquidType.Water;
+                ((LiquidContainerInfo)m_Info).m_Capacity = 75f;
+                ((LiquidContainerInfo)m_Info).m_Amount = 0f;
+                bambooContainer.m_Info = (LiquidContainerInfo)m_Info;
+                CalcHealth(bambooContainer);
+                bambooContainer.Initialize(true);
+
+                player.AddKnownItem(ItemID.Bamboo_Container);
+                EventsManager.OnEvent(Enums.Event.Craft, 1, (int)ItemID.Bamboo_Container);
+                craftingSkill.OnSkillAction();
+                itemsManager.m_CreationsData.Add((int)bambooContainer.m_Info.m_ID, (int)bambooContainer.m_Info.m_ID);
+                itemsManager.OnCreateItem(ItemID.Bamboo_Container);
+                return bambooContainer;
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CreateBambooContainer)}] throws exception: {exc.Message}");
+                return bambooContainer;
+            }
+        }
+
+        private Item CreateHammock()
+        {
+            Item hammockToUse = null;
+            try
+            {
+                string m_InfoName = ItemID.village_hammock_a.ToString();
+                GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
+                hammockToUse = CreateItem(prefab, true, player.transform.position + player.transform.forward * 2f + player.transform.up * 1f, player.transform.rotation);
+                hammockToUse.m_InfoName = m_InfoName;
+                ItemInfo m_Info = CreateItemInfo(hammockToUse, ItemID.village_hammock_a, HammockComponents(), HammockComponentsToReturn(), false, false);
+                m_Info.m_CantDestroy = false;
+                m_Info.m_CanBeDamaged = true;
+                m_Info.m_ReceiveDamageType = (int)DamageType.Melee;
+                m_Info.m_UsedForCrafting = false;
+                ((ConstructionInfo)m_Info).m_ConstructionType = ConstructionType.Shelter;
+                ((ConstructionInfo)m_Info).m_RestingParamsMul = 1f;
+                ((ConstructionInfo)m_Info).m_ParamsMulRadius = -0.5f;
+                ((ConstructionInfo)m_Info).m_HitsCountToDestroy = 3;
+                ((ConstructionInfo)m_Info).m_PlaceToAttachNames = new List<string>
+                {
+                    ItemID.building_frame.ToString(),
+                    ItemID.building_bamboo_frame.ToString()
+                };
+                ((ConstructionInfo)m_Info).m_PlaceToAttachToNames = new List<string>
+                {
+                    ItemID.building_wall.ToString(),
+                    ItemID.building_bamboo_wall.ToString()
+                };
+                m_Info.m_Type = ItemType.Construction;
+                hammockToUse.m_Info = (ConstructionInfo)m_Info;
+                CalcHealth(hammockToUse);
+                hammockToUse.Initialize(true);
+
+                player.AddKnownItem(ItemID.village_hammock_a);
+                EventsManager.OnEvent(Enums.Event.Craft, 1, (int)ItemID.village_hammock_a);
+                craftingSkill.OnSkillAction();
+                itemsManager.m_CreationsData.Add((int)hammockToUse.m_Info.m_ID, (int)hammockToUse.m_Info.m_ID);
+                itemsManager.OnCreateItem(ItemID.village_hammock_a);
+                return hammockToUse;
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CreateHammock)}] throws exception: {exc.Message}");
+                return hammockToUse;
+            }
+        }
+
+        private Item CreateBambooBowl()
+        {
+            Item bambooBowl = null;
+            try
+            {
+                string m_InfoName = ItemID.Bamboo_Bowl.ToString();
+                GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
+                bambooBowl = CreateItem(prefab, true, player.transform.position + player.transform.forward * 2f, player.transform.rotation);
+                bambooBowl.m_InfoName = m_InfoName;
+                ItemInfo m_Info = CreateItemInfo(bambooBowl, ItemID.Bamboo_Bowl, BambooBowlComponents(), BambooBowlComponentsToReturn(), true, true);
+                m_Info.m_CantDestroy = false;
+                m_Info.m_UsedForCrafting = true;
+                ((BowlInfo)m_Info).m_LiquidType = LiquidType.Water;
+                ((BowlInfo)m_Info).m_Capacity = 50f;
+                ((BowlInfo)m_Info).m_Amount = 0f;
+                bambooBowl.m_Info = (BowlInfo)m_Info;
+                CalcHealth(bambooBowl);
+                bambooBowl.Initialize(true);
+
+                player.AddKnownItem(ItemID.Bamboo_Bowl);
+                EventsManager.OnEvent(Enums.Event.Craft, 1, (int)ItemID.Bamboo_Bowl);
+                craftingSkill.OnSkillAction();
+                itemsManager.m_CreationsData.Add((int)bambooBowl.m_Info.m_ID, (int)bambooBowl.m_Info.m_ID);
+                itemsManager.OnCreateItem(ItemID.Bamboo_Bowl);
+                return bambooBowl;
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CreateBambooBowl)}] throws exception: {exc.Message}");
+                return bambooBowl;
+            }
+        }
+
+        private Item CreateBambooBlowgun()
+        {
+            Item blowgun = null;
+            try
+            {
+                string m_InfoName = ItemID.Bamboo_Blowpipe.ToString();
+                GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
+                blowgun = CreateItem(prefab, true, player.transform.position + player.transform.forward * 2f, player.transform.rotation);
+                blowgun.m_InfoName = m_InfoName;
+                ItemInfo m_Info = CreateItemInfo(blowgun, ItemID.Bamboo_Blowpipe, BlowgunComponents(), BlowgunComponentsToReturn(), true, false);
+                m_Info.m_CanEquip = true;
+                m_Info.m_CantDestroy = false;
+                m_Info.m_UsedForCrafting = false;
+                ((WeaponInfo)m_Info).m_WeaponType = WeaponType.Blowpipe;
+                blowgun.m_Info = (WeaponInfo)m_Info;
+                CalcHealth(blowgun);
+                blowgun.Initialize(true);
+
+                player.AddKnownItem(ItemID.Bamboo_Blowpipe);
+                EventsManager.OnEvent(Enums.Event.Craft, 1, (int)ItemID.Bamboo_Blowpipe);
+                craftingSkill.OnSkillAction();
+                itemsManager.m_CreationsData.Add((int)blowgun.m_Info.m_ID, (int)blowgun.m_Info.m_ID);
+                itemsManager.OnCreateItem(ItemID.Bamboo_Blowpipe);
+                return blowgun;
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(CreateBambooBlowgun)}] throws exception: {exc.Message}");
+                return blowgun;
+            }
+        }
+
+        private Item CreateItem(GameObject prefab, bool im_register, Vector3 position, Quaternion rotation)
         {
             GameObject gameObject = Instantiate(prefab, position, rotation);
             gameObject.name = prefab.name;
@@ -318,24 +553,25 @@ namespace ModCrafting
             return m_Item;
         }
 
-        private static ItemInfo CreateItemInfo(Item item, ItemID id, string infoName, Dictionary<int, int> componentsToReturn, bool canBeAddedToInventory, bool canBePlacedInStorage)
+        private ItemInfo CreateItemInfo(Item item, ItemID id, Dictionary<int, int> components, Dictionary<int, int> componentsToReturn, bool canBeAddedToInventory, bool canBePlacedInStorage)
         {
             ItemInfo m_Info = new ItemInfo
             {
                 m_CreationTime = (float)MainLevel.Instance.m_TODSky.Cycle.GameTime,
                 m_Item = item,
                 m_ID = id,
-                m_CanBeDamaged = true,
                 m_CanBeAddedToInventory = canBeAddedToInventory,
                 m_CanBePlacedInStorage = canBePlacedInStorage,
                 m_Craftable = true,
-                m_ComponentsToReturn = componentsToReturn
+                m_Components = components,
+                m_ComponentsToReturn = componentsToReturn,
+                m_Health = 25f,
+                m_MaxHealth = 25f
             };
-
             return m_Info;
         }
 
-        private static void CalcHealth(Item item)
+        private void CalcHealth(Item item)
         {
             float playerHealthMul = craftingSkill.GetPlayerHealthMul();
             float itemHealthMul = craftingSkill.GetItemHealthMul(item);
@@ -347,13 +583,66 @@ namespace ModCrafting
             }
         }
 
-        private static Dictionary<int, int> CreateHammockComponents()
+        private static Dictionary<int, int> HammockComponents()
+        {
+            Dictionary<int, int> dictionary = new Dictionary<int, int> { };
+            dictionary.Add((int)ItemID.village_hammock_a, 1);
+            return dictionary;
+        }
+
+        private static Dictionary<int, int> HammockComponentsToReturn()
         {
             Dictionary<int, int> dictionary = new Dictionary<int, int> { };
             dictionary.Add((int)ItemID.Rope, 4);
             dictionary.Add((int)ItemID.Palm_Leaf, 3);
             dictionary.Add((int)ItemID.Long_Stick, 3);
 
+            return dictionary;
+        }
+
+        private static Dictionary<int, int> BambooContainerComponents()
+        {
+            Dictionary<int, int> dictionary = new Dictionary<int, int> { };
+            dictionary.Add((int)ItemID.Bamboo_Container, 1);
+            return dictionary;
+        }
+
+        private static Dictionary<int, int> BambooContainerComponentsToReturn()
+        {
+            Dictionary<int, int> dictionary = new Dictionary<int, int> { };
+            dictionary.Add((int)ItemID.Rope, 1);
+            dictionary.Add((int)ItemID.Bamboo_Bowl, 1);
+
+            return dictionary;
+        }
+
+        private static Dictionary<int, int> BambooBowlComponents()
+        {
+            Dictionary<int, int> dictionary = new Dictionary<int, int> { };
+            dictionary.Add((int)ItemID.Bamboo_Bowl, 1);
+            return dictionary;
+        }
+
+        private static Dictionary<int, int> BambooBowlComponentsToReturn()
+        {
+            Dictionary<int, int> dictionary = new Dictionary<int, int> { };
+            dictionary.Add((int)ItemID.Bamboo_Log, 1);
+
+            return dictionary;
+        }
+
+        private static Dictionary<int, int> BlowgunComponents()
+        {
+            Dictionary<int, int> dictionary = new Dictionary<int, int> { };
+            dictionary.Add((int)ItemID.Bamboo_Blowpipe, 1);
+            return dictionary;
+        }
+
+        private static Dictionary<int, int> BlowgunComponentsToReturn()
+        {
+            Dictionary<int, int> dictionary = new Dictionary<int, int> { };
+            dictionary.Add((int)ItemID.Rope, 1);
+            dictionary.Add((int)ItemID.Bamboo_Long_Stick, 1);
             return dictionary;
         }
 
@@ -368,23 +657,132 @@ namespace ModCrafting
             return list;
         }
 
-        private static Dictionary<int, int> CreateBambooContainerComponents()
-        {
-            Dictionary<int, int> dictionary = new Dictionary<int, int> { };
-            dictionary.Add((int)ItemID.Rope, 1);
-            dictionary.Add((int)ItemID.Bamboo_Log, 1);
-
-            return dictionary;
-        }
-
         private static List<Item> GetBambooContainerCraftingitems()
         {
             List<Item> list = new List<Item>
             {
                 itemsManager.GetInfo(ItemID.Rope).m_Item,
+                itemsManager.GetInfo(ItemID.Bamboo_Bowl).m_Item
+            };
+            return list;
+        }
+
+        private static List<Item> GetBambooBowlCraftingitems()
+        {
+            List<Item> list = new List<Item>
+            {
                 itemsManager.GetInfo(ItemID.Bamboo_Log).m_Item
             };
             return list;
+        }
+
+        private static List<Item> GetBlowpipeCraftingitems()
+        {
+            List<Item> list = new List<Item>
+            {
+                itemsManager.GetInfo(ItemID.Rope).m_Item,
+                 itemsManager.GetInfo(ItemID.Bamboo_Long_Stick).m_Item
+            };
+            return list;
+        }
+
+        public void GetMaxThreeBlowpipeArrow(int count = 1)
+        {
+            try
+            {
+                if (count > 3)
+                {
+                    count = 3;
+                }
+                itemsManager.UnlockItemInfo(ItemID.Blowpipe_Arrow.ToString());
+                ItemInfo blowPipeArrowItemInfo = itemsManager.GetInfo(ItemID.Blowpipe_Arrow);
+                for (int i = 0; i < count; i++)
+                {
+                    player.AddItemToInventory(blowPipeArrowItemInfo.m_ID.ToString());
+                }
+                ShowHUDBigInfo($"Added {count} x {blowPipeArrowItemInfo.GetNameToDisplayLocalized()} to inventory", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(GetMaxThreeBlowpipeArrow)}] throws exception: {exc.Message}");
+            }
+        }
+
+        private void AddCraftingItem(Item item, int count = 1)
+        {
+            try
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    craftingManager.AddItem(item, false);
+                }
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(AddCraftingItem)}] throws exception: {exc.Message}");
+            }
+        }
+
+        private bool CanEquipItem
+        {
+            get
+            {
+                if (HarvestingAnimalController.Get().IsActive())
+                {
+                    return false;
+                }
+                if (MudMixerController.Get().IsActive())
+                {
+                    return false;
+                }
+                if (HarvestingSmallAnimalController.Get().IsActive())
+                {
+                    return false;
+                }
+                if (FishingController.Get().IsActive() && !FishingController.Get().CanHideRod())
+                {
+                    return false;
+                }
+                if (player.m_Animator.GetBool(player.m_CleanUpHash))
+                {
+                    return false;
+                }
+                if (ScenarioManager.Get().IsBoolVariableTrue("PlayerMechGameEnding"))
+                {
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        public void TryEquipBlowpipe()
+        {
+            try
+            {
+                ItemSlot equippedSlot = null;
+                for (int i = 0; i < 4; i++)
+                {
+                    equippedSlot = inventoryBackpack.GetSlotByIndex(i, BackpackPocket.Left);
+                    if (equippedSlot != null && equippedSlot.m_Item.m_Info.m_ID == ItemID.Bamboo_Blowpipe)
+                    {
+                        inventoryBackpack.m_EquippedItem = equippedSlot.m_Item;
+                        player.Equip(equippedSlot);
+                    }
+                }
+
+                if (equippedSlot != null)
+                {
+                    ShowHUDBigInfo($"Blowpipe has been equipped!", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                }
+                else
+                {
+                    ShowHUDBigInfo($"Cannot find blowpipe to equip!", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                }
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{nameof(ModCrafting)}.{nameof(ModCrafting)}:{nameof(TryEquipBlowpipe)}] throws exception: {exc.Message}");
+            }
         }
     }
 }
