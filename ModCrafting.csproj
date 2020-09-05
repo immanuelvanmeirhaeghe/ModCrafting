@@ -58,7 +58,6 @@
     </Reference>
     <Reference Include="ModManager">
       <HintPath>..\..\..\libs\ModManager.dll</HintPath>
-      <Private>False</Private>
     </Reference>
     <Reference Include="Mono.Posix">
       <HintPath>../../../modlib/GH/GH_data/Managed/Mono.Posix.dll</HintPath>

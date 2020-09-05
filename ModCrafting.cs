@@ -182,7 +182,8 @@ namespace ModCrafting
 
         private void InitWindow()
         {
-            ModCraftingWindow = GUI.Window(0, ModCraftingWindow, InitModWindow, $"{nameof(ModCrafting)}", GUI.skin.window);
+            int wid = GetHashCode();
+            ModCraftingWindow = GUI.Window(wid, ModCraftingWindow, InitModWindow, $"{nameof(ModCrafting)}", GUI.skin.window);
         }
 
         private void CreateMultiplayerOption()
