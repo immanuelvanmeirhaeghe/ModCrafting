@@ -10,7 +10,7 @@ namespace ModCrafting
         protected override void Start()
         {
             base.Start();
-            new GameObject("__ModCrafting__").AddComponent<ModCrafting>();
+            new GameObject($"__{nameof(ModCrafting)}__").AddComponent<ModCrafting>();
         }
     }
 }

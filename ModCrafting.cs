@@ -18,6 +18,8 @@ namespace ModCrafting
 
         private bool showUI = false;
 
+        public Rect ModCraftingWindow = new Rect(1000f, 500f, 450f, 150f);
+
         private static ItemsManager itemsManager;
 
         private static HUDManager hUDManager;
@@ -34,18 +36,13 @@ namespace ModCrafting
 
         public bool UseOption { get; private set; }
 
-        /// <summary>
-        /// ModAPI required security check to enable this mod feature for multiplayer.
-        /// See <see cref="ModManager"/> for implementation.
-        /// Based on request in chat: use  !requestMods in chat as client to request the host to activate mods for them.
-        /// </summary>
-        /// <returns>true if enabled, else false</returns>
         public bool IsModActiveForMultiplayer => FindObjectOfType(typeof(ModManager.ModManager)) != null && ModManager.ModManager.AllowModsForMultiplayer;
 
         public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
 
         public ModCrafting()
         {
+            useGUILayout = true;
             s_Instance = this;
         }
 
@@ -54,7 +51,7 @@ namespace ModCrafting
             return s_Instance;
         }
 
-        public static void ShowHUDBigInfo(string text, string header, string textureName)
+        public void ShowHUDBigInfo(string text, string header, string textureName)
         {
             HUDBigInfo bigInfo = (HUDBigInfo)hUDManager.GetHUD(typeof(HUDBigInfo));
             HUDBigInfoData bigInfoData = new HUDBigInfoData
@@ -68,7 +65,7 @@ namespace ModCrafting
             bigInfo.Show(true);
         }
 
-        public static void ShowHUDInfoLog(string itemID, string localizedTextKey)
+        public void ShowHUDInfoLog(string itemID, string localizedTextKey)
         {
             var localization = GreenHellGame.Instance.GetLocalization();
             HUDMessages hUDMessages = (HUDMessages)hUDManager.GetHUD(typeof(HUDMessages));
@@ -77,12 +74,12 @@ namespace ModCrafting
                 );
         }
 
-        private void EnableCursor(bool enabled = false)
+        private void EnableCursor(bool blockPlayer = false)
         {
-            CursorManager.Get().ShowCursor(enabled, false);
+            CursorManager.Get().ShowCursor(blockPlayer, false);
             player = Player.Get();
 
-            if (enabled)
+            if (blockPlayer)
             {
                 player.BlockMoves();
                 player.BlockRotation();
@@ -112,14 +109,17 @@ namespace ModCrafting
                     EnableCursor(false);
                 }
             }
-            if (Input.GetKeyDown(KeyCode.Delete))
+            if (GreenHellGame.DEBUG && Input.GetKeyDown(KeyCode.Delete))
             {
                 InitData();
                 PrintDebugActions();
+                ShowHUDBigInfo($"Debug action info was printed.", $"{nameof(ModCrafting)}  Info", HUDInfoLogTextureType.Count.ToString());
+                TryClearItems();
+                ShowHUDBigInfo($"All items were cleared.", $"{nameof(ModCrafting)}  Info", HUDInfoLogTextureType.Count.ToString());
             }
         }
 
-        private static void TryClearItems()
+        private void TryClearItems()
         {
             try
             {
@@ -142,7 +142,7 @@ namespace ModCrafting
             }
         }
 
-        private static void PrintDebugActions()
+        private void PrintDebugActions()
         {
             StringBuilder printed = new StringBuilder("PLAYER INPUT ACTIONS");
             try
@@ -162,7 +162,7 @@ namespace ModCrafting
                 {
                     printed.AppendLine($"\nAction\t{action}");
                 }
-                ModAPI.Log.Write($"{printed.ToString()}");
+                ModAPI.Log.Write($"{printed}");
             }
             catch (Exception exc)
             {
@@ -176,58 +176,13 @@ namespace ModCrafting
             {
                 InitData();
                 InitSkinUI();
-                InitModUI();
+                InitWindow();
             }
         }
 
-        private void InitModUI()
+        private void InitWindow()
         {
-            GUI.Box(new Rect(1000f, 500f, 450f, 150f), "ModCrafting UI - Press HOME to open/close", GUI.skin.window);
-            if (GUI.Button(new Rect(1430f, 500f, 20f, 20f), "X", GUI.skin.button))
-            {
-                showUI = false;
-                EnableCursor(false);
-            }
-
-            GUI.Label(new Rect(1020f, 520f, 200f, 20f), "4 x rope, 3 x palm leave, 3 x long stick", GUI.skin.label);
-            if (GUI.Button(new Rect(1270f, 520f, 150f, 20f), "Craft hammock", GUI.skin.button))
-            {
-                OnClickCraftHammockButton();
-                showUI = false;
-                EnableCursor(false);
-            }
-
-            GUI.Label(new Rect(1020f, 540f, 200f, 20f), "1 x bamboo log", GUI.skin.label);
-            if (GUI.Button(new Rect(1270f, 540f, 150f, 20f), "Craft bamboo bowl", GUI.skin.button))
-            {
-                //OnClickCraftBambooBowlButton();
-                showUI = false;
-                EnableCursor(false);
-            }
-
-            GUI.Label(new Rect(1020f, 560f, 200f, 20f), "1 x rope, 1 x bamboo bowl", GUI.skin.label);
-            if (GUI.Button(new Rect(1270f, 560f, 150f, 20f), "Craft bamboo container", GUI.skin.button))
-            {
-                OnClickCraftBambooBidonButton();
-                showUI = false;
-                EnableCursor(false);
-            }
-
-            GUI.Label(new Rect(1020f, 580f, 200f, 20f), "1 x rope, 1 x bamboo long stick", GUI.skin.label);
-            if (GUI.Button(new Rect(1270f, 580f, 150f, 20f), "Craft bamboo blowpipe", GUI.skin.button))
-            {
-                //OnClickCraftBlowgunButton();
-                showUI = false;
-                EnableCursor(false);
-            }
-
-            GUI.Label(new Rect(1020f, 600f, 200f, 20f), "1 x bamboo stick, 2 x feather", GUI.skin.label);
-            if (GUI.Button(new Rect(1270f, 600f, 150f, 20f), "Craft blowpipe dart", GUI.skin.button))
-            {
-                //OnClickCraftBlowgunArrowButton();
-                showUI = false;
-                EnableCursor(false);
-            }
+            ModCraftingWindow = GUI.Window(0, ModCraftingWindow, InitModWindow, $"{nameof(ModCrafting)}", GUI.skin.window);
         }
 
         private void CreateMultiplayerOption()
@@ -261,6 +216,57 @@ namespace ModCrafting
             GUI.skin = ModAPI.Interface.Skin;
         }
 
+        private void InitModWindow(int windowId)
+        {
+            if (GUI.Button(new Rect(1430f, 500f, 20f, 20f), "X", GUI.skin.button))
+            {
+                CloseWindow();
+            }
+
+            GUI.Label(new Rect(1020f, 520f, 200f, 20f), "4 x rope, 3 x palm leave, 3 x long stick", GUI.skin.label);
+            if (GUI.Button(new Rect(1270f, 520f, 150f, 20f), "Craft hammock", GUI.skin.button))
+            {
+                OnClickCraftHammockButton();
+                CloseWindow();
+            }
+
+            //GUI.Label(new Rect(1020f, 540f, 200f, 20f), "1 x bamboo log", GUI.skin.label);
+            //if (GUI.Button(new Rect(1270f, 540f, 150f, 20f), "Craft bamboo bowl", GUI.skin.button))
+            //{
+            //   OnClickCraftBambooBowlButton();
+            //    CloseWindow();
+            //}
+
+            GUI.Label(new Rect(1020f, 560f, 200f, 20f), "1 x rope, 1 x bamboo bowl", GUI.skin.label);
+            if (GUI.Button(new Rect(1270f, 560f, 150f, 20f), "Craft bamboo container", GUI.skin.button))
+            {
+                OnClickCraftBambooBidonButton();
+                CloseWindow();
+            }
+
+            //GUI.Label(new Rect(1020f, 580f, 200f, 20f), "1 x rope, 1 x bamboo long stick", GUI.skin.label);
+            //if (GUI.Button(new Rect(1270f, 580f, 150f, 20f), "Craft bamboo blowpipe", GUI.skin.button))
+            //{
+            //    OnClickCraftBlowgunButton();
+            //    CloseWindow();
+            //}
+
+            //GUI.Label(new Rect(1020f, 600f, 200f, 20f), "1 x bamboo stick, 2 x feather", GUI.skin.label);
+            //if (GUI.Button(new Rect(1270f, 600f, 150f, 20f), "Craft blowpipe dart", GUI.skin.button))
+            //{
+            //    OnClickCraftBlowgunArrowButton();
+            //    CloseWindow();
+            //}
+
+            GUI.DragWindow(new Rect(0, 0, 10000, 10000));
+        }
+
+        private void CloseWindow()
+        {
+            showUI = false;
+            EnableCursor(false);
+        }
+
         private void OnClickCraftBambooBidonButton()
         {
             try
@@ -268,7 +274,7 @@ namespace ModCrafting
                 Item m_BambooBidon = CraftBambooContainer();
                 if (m_BambooBidon != null)
                 {
-                    ShowHUDBigInfo($"Created 1 x {m_BambooBidon.m_Info.GetNameToDisplayLocalized()}", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {m_BambooBidon.m_Info.GetNameToDisplayLocalized()}", $"{nameof(ModCrafting)}  Info", HUDInfoLogTextureType.Count.ToString());
                 }
             }
             catch (Exception exc)
@@ -284,7 +290,7 @@ namespace ModCrafting
                 Item m_Hammock = CraftHammock();
                 if (m_Hammock != null)
                 {
-                    ShowHUDBigInfo($"Created 1 x {m_Hammock.m_Info.GetNameToDisplayLocalized()}", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {m_Hammock.m_Info.GetNameToDisplayLocalized()}", $"{nameof(ModCrafting)}  Info", HUDInfoLogTextureType.Count.ToString());
                 }
             }
             catch (Exception exc)
@@ -300,7 +306,7 @@ namespace ModCrafting
                 Item m_BambooBowl = CraftBambooBowl();
                 if (m_BambooBowl != null)
                 {
-                    ShowHUDBigInfo($"Created 1 x {m_BambooBowl.m_Info.GetNameToDisplayLocalized()}", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {m_BambooBowl.m_Info.GetNameToDisplayLocalized()}", $"{nameof(ModCrafting)}  Info", HUDInfoLogTextureType.Count.ToString());
                 }
             }
             catch (Exception exc)
@@ -314,7 +320,7 @@ namespace ModCrafting
             try
             {
                 Item m_Blowgun = CraftBambooBlowgun();
-                ShowHUDBigInfo($"Created 1 x Bamboo Blowpipe", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                ShowHUDBigInfo($"Created 1 x Bamboo Blowpipe", $"{nameof(ModCrafting)}  Info", HUDInfoLogTextureType.Count.ToString());
             }
             catch (Exception exc)
             {
@@ -700,7 +706,7 @@ namespace ModCrafting
                 {
                     player.AddItemToInventory(blowPipeArrowItemInfo.m_ID.ToString());
                 }
-                ShowHUDBigInfo($"Added {count} x {blowPipeArrowItemInfo.GetNameToDisplayLocalized()} to inventory", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                ShowHUDBigInfo($"Added {count} x {blowPipeArrowItemInfo.GetNameToDisplayLocalized()} to inventory", $"{nameof(ModCrafting)}  Info", HUDInfoLogTextureType.Count.ToString());
             }
             catch (Exception exc)
             {
@@ -772,11 +778,11 @@ namespace ModCrafting
 
                 if (equippedSlot != null)
                 {
-                    ShowHUDBigInfo($"Blowpipe has been equipped!", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Blowpipe has been equipped!", $"{nameof(ModCrafting)}  Info", HUDInfoLogTextureType.Count.ToString());
                 }
                 else
                 {
-                    ShowHUDBigInfo($"Cannot find blowpipe to equip!", "ModCrafting Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Cannot find blowpipe to equip!", $"{nameof(ModCrafting)}  Info", HUDInfoLogTextureType.Count.ToString());
                 }
             }
             catch (Exception exc)
