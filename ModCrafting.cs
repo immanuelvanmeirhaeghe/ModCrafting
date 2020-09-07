@@ -20,7 +20,7 @@ namespace ModCrafting
 
         private bool showUI = false;
 
-        public Rect ModCraftingScreen = new Rect(1000f, 500f, 450f, 150f);
+        public Rect ModCraftingScreen = new Rect(150f, 500f, 450f, 150f);
 
         private static ItemsManager itemsManager;
 
@@ -185,7 +185,7 @@ namespace ModCrafting
         private void InitWindow()
         {
             int wid = GetHashCode();
-            ModCraftingScreen = GUI.Window(wid, ModCraftingScreen, InitModCraftingScreen, $"{ModName}", GUI.skin.window);
+            ModCraftingScreen = GUILayout.Window(wid, ModCraftingScreen, InitModCraftingScreen, $"{ModName}", GUI.skin.window);
         }
 
         private void CreateMultiplayerOption()
@@ -221,14 +221,14 @@ namespace ModCrafting
 
         private void InitModCraftingScreen(int windowID)
         {
-            using (var verticalScope = new GUILayout.VerticalScope($"{ModName}box"))
+            using (var verticalScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
                 if (GUI.Button(new Rect(430f, 0f, 20f, 20f), "X", GUI.skin.button))
                 {
                     CloseWindow();
                 }
 
-                using (var horizontalScope = new GUILayout.HorizontalScope("hammaBox"))
+                using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
                 {
                     GUILayout.Label("4 x rope, 3 x palm leave, 3 x long stick", GUI.skin.label);
                     if (GUILayout.Button("Craft hammock", GUI.skin.button, GUILayout.MinWidth(100f), GUILayout.MaxWidth(200f)))
@@ -238,7 +238,7 @@ namespace ModCrafting
                     }
                 }
 
-                using (var horizontalScope = new GUILayout.HorizontalScope("bamcBox"))
+                using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
                 {
                     GUILayout.Label("1 x rope, 1 x bamboo bowl", GUI.skin.label);
                     if (GUILayout.Button("Craft bamboo container", GUI.skin.button, GUILayout.MinWidth(100f), GUILayout.MaxWidth(200f)))
