@@ -7,11 +7,6 @@ using UnityEngine;
 
 namespace ModCrafting
 {
-    /// <summary>
-    /// ModConstructions is a mod for Green Hell
-	/// (only in single player mode - Use ModManager for multiplayer).
-    /// Enable the mod UI by pressing END.
-    /// </summary>
     public class ModCrafting : MonoBehaviour
     {
         private static ModCrafting s_Instance;
@@ -112,7 +107,7 @@ namespace ModCrafting
                     EnableCursor(false);
                 }
             }
-            if (GreenHellGame.DEBUG && Input.GetKeyDown(KeyCode.Delete))
+            if (Input.GetKeyDown(KeyCode.Delete))
             {
                 InitData();
                 TryClearItems();
