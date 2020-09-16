@@ -109,9 +109,42 @@ namespace ModCrafting
             }
             if (Input.GetKeyDown(KeyCode.Delete))
             {
-                InitData();
-                TryClearItems();
-                ShowHUDBigInfo($"All crafted items were destroyed.", $"{ModName} Info", HUDInfoLogTextureType.Count.ToString());
+                DestroyMouseTarget();
+            }
+        }
+
+        public void DestroyMouseTarget()
+        {
+            try
+            {
+                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo))
+                {
+                    GameObject go = hitInfo.collider.transform.gameObject;
+                    Item item = go.GetComponent<Item>();
+                    if (!item.IsPlayer() && !item.IsAI()
+                                                       && !item.IsHumanAI()
+                                                        || item.m_Info.IsConstruction()
+                                                        || item.m_Info.IsShelter()
+                                                        || item.m_Info.IsStand()
+                                                        || item.m_Info.IsWall()
+                                                        || item.m_Info.m_ID == ItemID.village_hammock_a
+                                                        || item.m_Info.m_ID == ItemID.raft
+                                                        || item.m_Info.m_ID == ItemID.Bamboo_Container
+                                                         || item.m_Info.m_ID == ItemID.Bamboo_Blowpipe
+                                                        || item.IsRoof()
+                                                        || item.IsShower()
+                                                        || item.IsLadder()
+                                                        || item.IsFreeHandsLadder()
+                                                        || ItemInfo.IsSmoker(item.m_Info.m_ID))
+                    {
+                        itemsManager.AddItemToDestroy(item);
+                        ShowHUDBigInfo($"{item.m_Info.GetNameToDisplayLocalized()} destroyed!", $"{ModName} Info", HUDInfoLogTextureType.Count.ToString());
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(DestroyMouseTarget)}] throws exception: {exc.Message}");
             }
         }
 
