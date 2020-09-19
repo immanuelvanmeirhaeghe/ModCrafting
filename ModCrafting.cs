@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace ModCrafting
 {
-    public class ModCrafting : MonoBehaviour
+    public class ModCrafting : MonoBehaviour, IYesNoDialogOwner
     {
         private static ModCrafting s_Instance;
 
@@ -30,6 +30,8 @@ namespace ModCrafting
         private static ConstructionController constructionController;
 
         private static InventoryBackpack inventoryBackpack;
+
+        private static Item SelectedItemToDestroy;
 
         public static List<Item> CraftedItems = new List<Item>();
 
@@ -117,29 +119,31 @@ namespace ModCrafting
         {
             try
             {
-                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo))
+                if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
                 {
-                    GameObject go = hitInfo.collider.transform.gameObject;
-                    Item item = go.GetComponent<Item>();
-                    if (!item.IsPlayer() && !item.IsAI()
-                                                       && !item.IsHumanAI()
-                                                        || item.m_Info.IsConstruction()
-                                                        || item.m_Info.IsShelter()
-                                                        || item.m_Info.IsStand()
-                                                        || item.m_Info.IsWall()
-                                                        || item.m_Info.m_ID == ItemID.village_hammock_a
-                                                        || item.m_Info.m_ID == ItemID.raft
-                                                        || item.m_Info.m_ID == ItemID.Bamboo_Container
-                                                         || item.m_Info.m_ID == ItemID.Bamboo_Blowpipe
-                                                        || item.IsRoof()
-                                                        || item.IsShower()
-                                                        || item.IsLadder()
-                                                        || item.IsFreeHandsLadder()
-                                                        || ItemInfo.IsSmoker(item.m_Info.m_ID))
+                    if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo))
                     {
-                        itemsManager.AddItemToDestroy(item);
-                        ShowHUDBigInfo($"{item.m_Info.GetNameToDisplayLocalized()} destroyed!", $"{ModName} Info", HUDInfoLogTextureType.Count.ToString());
+                        GameObject go = hitInfo.collider.transform.gameObject;
+                        if (go != null)
+                        {
+                            Item item = go.GetComponent<Item>();
+                            if (item != null)
+                            {
+                                if (!item.IsPlayer() && !item.IsAI()
+                                                               && !item.IsHumanAI())
+                                {
+                                    CursorManager.Get().ShowCursor(true, true);
+                                    SelectedItemToDestroy = item;
+                                    YesNoDialog deleteYesNo = GreenHellGame.GetYesNoDialog();
+                                    deleteYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy {item.m_Info.GetNameToDisplayLocalized()}?", false);
+                                }
+                            }
+                        }
                     }
+                }
+                else
+                {
+                    ShowHUDBigInfo(OnlyForSinglePlayerOrHostMessage(), $"{ModName} Info", HUDInfoLogTextureType.Count.ToString());
                 }
             }
             catch (Exception exc)
@@ -147,6 +151,9 @@ namespace ModCrafting
                 ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(DestroyMouseTarget)}] throws exception: {exc.Message}");
             }
         }
+
+        public static string OnlyForSinglePlayerOrHostMessage()
+            => $"\n<color=#ffff00>DELETE option</color> is only available for single player or when host.\nHost can activate using <b>ModManager</b>.";
 
         private void ToggleShowUI()
         {
@@ -302,7 +309,7 @@ namespace ModCrafting
                 if (hammock != null)
                 {
                     CraftedItems.Add(hammock);
-                   ShowHUDBigInfo($"Created 1 x {hammock.m_Info.GetNameToDisplayLocalized()}", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {hammock.m_Info.GetNameToDisplayLocalized()}", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
                 }
             }
             catch (Exception exc)
@@ -795,6 +802,32 @@ namespace ModCrafting
             {
                 ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(TryEquipBlowpipe)}] throws exception: {exc.Message}");
             }
+        }
+
+        public void OnYesFromDialog()
+        {
+            if (SelectedItemToDestroy != null)
+            {
+                itemsManager.AddItemToDestroy(SelectedItemToDestroy);
+                ShowHUDBigInfo($"{SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()} destroyed!", $"{ModName} Info", HUDInfoLogTextureType.Count.ToString());
+            }
+            EnableCursor(false);
+        }
+
+        public void OnNoFromDialog()
+        {
+            SelectedItemToDestroy = null;
+            EnableCursor(false);
+        }
+
+        public void OnOkFromDialog()
+        {
+
+        }
+
+        public void OnCloseDialog()
+        {
+
         }
     }
 }
