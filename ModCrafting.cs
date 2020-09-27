@@ -15,7 +15,7 @@ namespace ModCrafting
 
         private bool ShowUI = false;
 
-        public static Rect ModCraftingScreen = new Rect(500f, 750f, 450f, 150f);
+        public static Rect ModCraftingScreen = new Rect(300f, 750f, 450f, 150f);
 
         private static ItemsManager itemsManager;
 
@@ -37,19 +37,8 @@ namespace ModCrafting
 
         public bool UseOption { get; private set; }
 
-        private bool _isActiveForMultiplayer;
-        public bool IsModActiveForMultiplayer
-        {
-            get => _isActiveForMultiplayer;
-            set => _isActiveForMultiplayer = FindObjectOfType(typeof(ModManager.ModManager)) != null && ModManager.ModManager.AllowModsForMultiplayer;
-        }
-
-        private bool _isActiveForSingleplayer;
-        public bool IsModActiveForSingleplayer
-        {
-            get => _isActiveForSingleplayer;
-            set => _isActiveForSingleplayer = ReplTools.AmIMaster();
-        }
+        public bool IsModActiveForMultiplayer => FindObjectOfType(typeof(ModManager.ModManager)) != null && ModManager.ModManager.AllowModsForMultiplayer;
+        public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
 
         public ModCrafting()
         {
@@ -226,8 +215,8 @@ namespace ModCrafting
 
                 using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
                 {
-                    GUILayout.Label("20 x rope, 4 x Banesteriopsis vine, 2 x stick, 2 x Brazilian nut", GUI.skin.label);
-                    if (GUILayout.Button("Craft hammock", GUI.skin.button, GUILayout.MinWidth(100f), GUILayout.MaxWidth(200f)))
+                    GUILayout.Label("20 x rope, 4 x Banesteriopsis vine, 2 x stick, 2 x Brazilian nut", GUI.skin.label, GUILayout.MaxWidth(200));
+                    if (GUILayout.Button("Craft hammock", GUI.skin.button))
                     {
                         OnClickCraftHammockButton();
                         CloseWindow();
@@ -236,8 +225,8 @@ namespace ModCrafting
 
                 using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
                 {
-                    GUILayout.Label("1 x rope, 1 x bamboo bowl", GUI.skin.label);
-                    if (GUILayout.Button("Craft bamboo container", GUI.skin.button, GUILayout.MinWidth(100f), GUILayout.MaxWidth(200f)))
+                    GUILayout.Label("1 x rope, 1 x bamboo bowl", GUI.skin.label, GUILayout.MaxWidth(200f));
+                    if (GUILayout.Button("Craft bamboo container", GUI.skin.button))
                     {
                         OnClickCraftBambooBidonButton();
                         CloseWindow();
@@ -246,23 +235,23 @@ namespace ModCrafting
 
                 using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
                 {
-                    GUILayout.Label("4 x rope, 5 x long bamboo stick", GUI.skin.label);
-                    if (GUILayout.Button("Craft bamboo raft", GUI.skin.button, GUILayout.MinWidth(100f), GUILayout.MaxWidth(200f)))
+                    GUILayout.Label("4 x rope, 5 x long bamboo stick", GUI.skin.label, GUILayout.MaxWidth(200f));
+                    if (GUILayout.Button("Craft bamboo raft", GUI.skin.button))
                     {
                         OnClickCraftBambooRaftButton();
                         CloseWindow();
                     }
                 }
 
-                //GUILayout.Label("1 x rope, 1 x bamboo long stick", GUI.skin.label);
-                //if (GUILayout.Button("Craft bamboo blowpipe", GUI.skin.button, GUILayout.MinWidth(100f), GUILayout.MaxWidth(200f)))
+                //GUILayout.Label("1 x rope, 1 x bamboo long stick", GUI.skin.label, GUILayout.MaxWidth(200f));
+                //if (GUILayout.Button("Craft bamboo blowpipe", GUI.skin.button))
                 //{
                 //    OnClickCraftBlowgunButton();
                 //    CloseWindow();
                 //}
 
-                //GUILayout.Label("1 x bamboo stick, 2 x feather", GUI.skin.label);
-                //if (GUILayout.Button("Craft blowpipe dart", GUI.skin.button, GUILayout.MinWidth(100f), GUILayout.MaxWidth(200f)))
+                //GUILayout.Label("1 x bamboo stick, 2 x feather", GUI.skin.labe, GUILayout.MaxWidth(200f));
+                //if (GUILayout.Button("Craft blowpipe dart", GUI.skin.button))
                 //{
                 //    OnClickCraftBlowgunArrowButton();
                 //    CloseWindow();
