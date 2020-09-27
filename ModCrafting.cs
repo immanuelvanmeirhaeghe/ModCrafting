@@ -13,9 +13,9 @@ namespace ModCrafting
 
         private static readonly string ModName = nameof(ModCrafting);
 
-        private bool showUI = false;
+        private bool ShowUI = false;
 
-        public Rect ModCraftingScreen = new Rect(150f, 500f, 450f, 150f);
+        public static Rect ModCraftingScreen = new Rect(500f, 750f, 450f, 150f);
 
         private static ItemsManager itemsManager;
 
@@ -37,9 +37,19 @@ namespace ModCrafting
 
         public bool UseOption { get; private set; }
 
-        public bool IsModActiveForMultiplayer => FindObjectOfType(typeof(ModManager.ModManager)) != null && ModManager.ModManager.AllowModsForMultiplayer;
+        private bool _isActiveForMultiplayer;
+        public bool IsModActiveForMultiplayer
+        {
+            get => _isActiveForMultiplayer;
+            set => _isActiveForMultiplayer = FindObjectOfType(typeof(ModManager.ModManager)) != null && ModManager.ModManager.AllowModsForMultiplayer;
+        }
 
-        public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
+        private bool _isActiveForSingleplayer;
+        public bool IsModActiveForSingleplayer
+        {
+            get => _isActiveForSingleplayer;
+            set => _isActiveForSingleplayer = ReplTools.AmIMaster();
+        }
 
         public ModCrafting()
         {
@@ -78,7 +88,6 @@ namespace ModCrafting
         private void EnableCursor(bool blockPlayer = false)
         {
             CursorManager.Get().ShowCursor(blockPlayer, false);
-            player = Player.Get();
 
             if (blockPlayer)
             {
@@ -98,13 +107,13 @@ namespace ModCrafting
         {
             if (Input.GetKeyDown(KeyCode.Home))
             {
-                if (!showUI)
+                if (!ShowUI)
                 {
                     InitData();
                     EnableCursor(true);
                 }
                 ToggleShowUI();
-                if (!showUI)
+                if (!ShowUI)
                 {
                     EnableCursor(false);
                 }
@@ -129,10 +138,9 @@ namespace ModCrafting
                             Item item = go.GetComponent<Item>();
                             if (item != null)
                             {
-                                if (!item.IsPlayer() && !item.IsAI()
-                                                               && !item.IsHumanAI())
+                                if (!item.IsPlayer() && !item.IsAI() && !item.IsHumanAI())
                                 {
-                                    CursorManager.Get().ShowCursor(true, true);
+                                    EnableCursor(true);
                                     SelectedItemToDestroy = item;
                                     YesNoDialog deleteYesNo = GreenHellGame.GetYesNoDialog();
                                     deleteYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy {item.m_Info.GetNameToDisplayLocalized()}?", false);
@@ -153,11 +161,11 @@ namespace ModCrafting
         }
 
         public static string OnlyForSinglePlayerOrHostMessage()
-            => $"\n<color=#ffff00>DELETE option</color> is only available for single player or when host.\nHost can activate using <b>ModManager</b>.";
+            => $"\n<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>DELETE option</color> is only available for single player or when host.\nHost can activate using <b>ModManager</b>.";
 
         private void ToggleShowUI()
         {
-            showUI = !showUI;
+            ShowUI = !ShowUI;
         }
 
         private void TryClearItems()
@@ -177,7 +185,7 @@ namespace ModCrafting
 
         private void OnGUI()
         {
-            if (showUI)
+            if (ShowUI)
             {
                 InitData();
                 InitSkinUI();
@@ -189,21 +197,6 @@ namespace ModCrafting
         {
             int wid = GetHashCode();
             ModCraftingScreen = GUILayout.Window(wid, ModCraftingScreen, InitModCraftingScreen, $"{ModName}", GUI.skin.window);
-        }
-
-        private void CreateMultiplayerOption()
-        {
-            if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
-            {
-                GUILayout.Label("Use OptionFeature", GUI.skin.label);
-                UseOption = GUILayout.Toggle(UseOption, string.Empty, GUI.skin.toggle);
-            }
-            else
-            {
-                GUILayout.Label("Use OptionFeature", GUI.skin.label);
-                GUILayout.Label("is only for single player or when host", GUI.skin.label);
-                GUILayout.Label("Host can activate using ModManager.", GUI.skin.label);
-            }
         }
 
         private void InitData()
@@ -233,7 +226,7 @@ namespace ModCrafting
 
                 using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
                 {
-                    GUILayout.Label("4 x rope, 3 x palm leave, 3 x long stick", GUI.skin.label);
+                    GUILayout.Label("20 x rope, 4 x Banesteriopsis vine, 2 x stick, 2 x Brazilian nut", GUI.skin.label);
                     if (GUILayout.Button("Craft hammock", GUI.skin.button, GUILayout.MinWidth(100f), GUILayout.MaxWidth(200f)))
                     {
                         OnClickCraftHammockButton();
@@ -280,7 +273,7 @@ namespace ModCrafting
 
         private void CloseWindow()
         {
-            showUI = false;
+            ShowUI = false;
             EnableCursor(false);
         }
 
@@ -292,7 +285,7 @@ namespace ModCrafting
                 if (bambooBidon != null)
                 {
                     CraftedItems.Add(bambooBidon);
-                    ShowHUDBigInfo($"Created 1 x {bambooBidon.m_Info.GetNameToDisplayLocalized()}", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {bambooBidon.m_Info.GetNameToDisplayLocalized()}", $"{ModName} Info", HUDInfoLogTextureType.Count.ToString());
                 }
             }
             catch (Exception exc)
@@ -611,9 +604,10 @@ namespace ModCrafting
         private static Dictionary<int, int> HammockComponentsToReturn()
         {
             Dictionary<int, int> dictionary = new Dictionary<int, int> { };
-            dictionary.Add((int)ItemID.Rope, 4);
-            dictionary.Add((int)ItemID.Palm_Leaf, 3);
-            dictionary.Add((int)ItemID.Long_Stick, 3);
+            dictionary.Add((int)ItemID.Rope, 20);
+            dictionary.Add((int)ItemID.banisteriopsis_ToHoldHarvest, 4);
+            dictionary.Add((int)ItemID.Stick, 2);
+            dictionary.Add((int)ItemID.Brazil_nut, 2);
 
             return dictionary;
         }
@@ -822,12 +816,12 @@ namespace ModCrafting
 
         public void OnOkFromDialog()
         {
-
+            OnYesFromDialog();
         }
 
         public void OnCloseDialog()
         {
-
+            OnNoFromDialog();
         }
     }
 }
