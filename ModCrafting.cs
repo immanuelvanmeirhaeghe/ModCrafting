@@ -15,7 +15,7 @@ namespace ModCrafting
 
         private bool ShowUI = false;
 
-        public static Rect ModCraftingScreen = new Rect(300f, 750f, 450f, 150f);
+        public static Rect ModCraftingScreen = new Rect(Screen.width / 4f, Screen.height / 4f, 450f, 150f);
 
         private static ItemsManager itemsManager;
 
@@ -37,8 +37,26 @@ namespace ModCrafting
 
         public bool UseOption { get; private set; }
 
-        public bool IsModActiveForMultiplayer => FindObjectOfType(typeof(ModManager.ModManager)) != null && ModManager.ModManager.AllowModsForMultiplayer;
+        public bool IsModActiveForMultiplayer { get; private set; }
         public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
+
+        private static string HUDBigInfoMessage(string message) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.red)}>System</color>\n{message}";
+
+        public void Start()
+        {
+            ModManager.ModManager.onPermissionValueChanged += ModManager_onPermissionValueChanged;
+        }
+
+        private void ModManager_onPermissionValueChanged(bool optionValue)
+        {
+            IsModActiveForMultiplayer = optionValue;
+            ShowHUDBigInfo(
+                          (optionValue ?
+                            HUDBigInfoMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>Permission to use mods for multiplayer was granted!</color>")
+                            : HUDBigInfoMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>Permission to use mods for multiplayer was revoked!</color>")),
+                           $"{ModName} Info",
+                           HUDInfoLogTextureType.Count.ToString());
+        }
 
         public ModCrafting()
         {
@@ -792,7 +810,10 @@ namespace ModCrafting
             if (SelectedItemToDestroy != null)
             {
                 itemsManager.AddItemToDestroy(SelectedItemToDestroy);
-                ShowHUDBigInfo($"{SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()} destroyed!", $"{ModName} Info", HUDInfoLogTextureType.Count.ToString());
+                ShowHUDBigInfo(
+                    HUDBigInfoMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()} destroyed!</color>"),
+                    $"{ModName} Info",
+                    HUDInfoLogTextureType.Count.ToString());
             }
             EnableCursor(false);
         }
