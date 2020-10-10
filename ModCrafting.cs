@@ -150,7 +150,7 @@ namespace ModCrafting
                                     EnableCursor(true);
                                     SelectedItemToDestroy = item;
                                     YesNoDialog deleteYesNo = GreenHellGame.GetYesNoDialog();
-                                    deleteYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy {item.m_Info.GetNameToDisplayLocalized()}?", false);
+                                    deleteYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy {SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()}?", false);
                                 }
                             }
                         }
@@ -163,7 +163,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(DestroyMouseTarget)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(DestroyMouseTarget)}] throws exception: {exc.Message}");
             }
         }
 
@@ -809,14 +809,24 @@ namespace ModCrafting
         {
             if (SelectedItemToDestroy != null)
             {
-                itemsManager.AddItemToDestroy(SelectedItemToDestroy);
+                SelectedItemToDestroy.TakeDamage(new DamageInfo { m_Damage = 100f, m_CriticalHit = true, m_DamageType = DamageType.Melee });
+                Destroy(SelectedItemToDestroy);
                 ShowHUDBigInfo(
-                    HUDBigInfoMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()} destroyed!</color>"),
+                    HUDBigInfoMessage(ItemDestroyedMessage()),
                     $"{ModName} Info",
                     HUDInfoLogTextureType.Count.ToString());
             }
+            else
+            {
+                ShowHUDBigInfo(
+                   HUDBigInfoMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>No item selected to destroy!</color>"),
+                   $"{ModName} Info",
+                   HUDInfoLogTextureType.Count.ToString());
+            }
             EnableCursor(false);
         }
+
+        public static string ItemDestroyedMessage() => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()} destroyed!</color>";
 
         public void OnNoFromDialog()
         {
