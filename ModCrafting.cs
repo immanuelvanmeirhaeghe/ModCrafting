@@ -31,7 +31,7 @@ namespace ModCrafting
 
         private static InventoryBackpack inventoryBackpack;
 
-        private static Item SelectedItemToDestroy;
+        public static Item SelectedItemToDestroy;
 
         public static List<Item> CraftedItems = new List<Item>();
 
@@ -39,6 +39,8 @@ namespace ModCrafting
 
         public bool IsModActiveForMultiplayer { get; private set; }
         public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
+
+        public static string ItemDestroyedMessage() => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()} destroyed!</color>";
 
         private static string HUDBigInfoMessage(string message) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.red)}>System</color>\n{message}";
 
@@ -826,8 +828,6 @@ namespace ModCrafting
             EnableCursor(false);
         }
 
-        public static string ItemDestroyedMessage() => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()} destroyed!</color>";
-
         public void OnNoFromDialog()
         {
             SelectedItemToDestroy = null;
@@ -841,7 +841,7 @@ namespace ModCrafting
 
         public void OnCloseDialog()
         {
-            OnNoFromDialog();
+            EnableCursor(false);
         }
     }
 }
