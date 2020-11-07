@@ -16,7 +16,7 @@ namespace ModCrafting
 
         private bool ShowUI = false;
 
-        public static Rect ModCraftingScreen = new Rect(Screen.width / 4f, Screen.height / 4f, 450f, 150f);
+        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, 750f, 150f);
 
         public static Vector2 scrollPosition;
 
@@ -251,12 +251,12 @@ namespace ModCrafting
                 CraftBambooContainerBox();
                 CraftBambooRaftBox();
 
-                TryCraftItemBox();
+                CraftItemBox();
             }
             GUI.DragWindow(new Rect(0f, 0f, 10000f, 10000f));
         }
 
-        private void TryCraftItemBox()
+        private void CraftItemBox()
         {
             using (var verScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
@@ -274,11 +274,64 @@ namespace ModCrafting
 
         private void ScrollingitemsView()
         {
-            scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUI.skin.scrollView);
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUI.skin.scrollView, GUILayout.MinHeight(250f));
 
             SelectedItemIndex = GUILayout.SelectionGrid(SelectedItemIndex, GetItems(), 3, GUI.skin.button);
 
             GUILayout.EndScrollView();
+        }
+
+        private void ScreenMenuBox()
+        {
+            if (GUI.Button(new Rect(ModCraftingScreen.width - 20f, 0f, 20f, 20f), "X", GUI.skin.button))
+            {
+                CloseWindow();
+            }
+        }
+
+        private void CraftBambooRaftBox()
+        {
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            {
+                GUILayout.Label("4 x rope, 5 x long bamboo stick", GUI.skin.label, GUILayout.MaxWidth(200f));
+                if (GUILayout.Button("Craft bamboo raft", GUI.skin.button))
+                {
+                    OnClickCraftBambooRaftButton();
+                    CloseWindow();
+                }
+            }
+        }
+
+        private void CraftBambooContainerBox()
+        {
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            {
+                GUILayout.Label("1 x rope, 1 x bamboo bowl", GUI.skin.label, GUILayout.MaxWidth(200f));
+                if (GUILayout.Button("Craft bamboo container", GUI.skin.button))
+                {
+                    OnClickCraftBambooBidonButton();
+                    CloseWindow();
+                }
+            }
+        }
+
+        private void CraftHammockBox()
+        {
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            {
+                GUILayout.Label("20 x rope, 4 x Banesteriopsis vine, 2 x stick, 2 x Brazilian nut", GUI.skin.label, GUILayout.MaxWidth(200));
+                if (GUILayout.Button("Craft hammock", GUI.skin.button))
+                {
+                    OnClickCraftHammockButton();
+                    CloseWindow();
+                }
+            }
+        }
+
+        private void CloseWindow()
+        {
+            ShowUI = false;
+            EnableCursor(false);
         }
 
         private string[] GetItems()
@@ -324,59 +377,6 @@ namespace ModCrafting
             {
                 ModAPI.Log.Write($"[{ModName}:{nameof(OnClickTryCraftButton)}] throws exception:\n{exc.Message}");
             }
-        }
-
-        private void CraftBambooRaftBox()
-        {
-            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
-            {
-                GUILayout.Label("4 x rope, 5 x long bamboo stick", GUI.skin.label, GUILayout.MaxWidth(200f));
-                if (GUILayout.Button("Craft bamboo raft", GUI.skin.button))
-                {
-                    OnClickCraftBambooRaftButton();
-                    CloseWindow();
-                }
-            }
-        }
-
-        private void CraftBambooContainerBox()
-        {
-            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
-            {
-                GUILayout.Label("1 x rope, 1 x bamboo bowl", GUI.skin.label, GUILayout.MaxWidth(200f));
-                if (GUILayout.Button("Craft bamboo container", GUI.skin.button))
-                {
-                    OnClickCraftBambooBidonButton();
-                    CloseWindow();
-                }
-            }
-        }
-
-        private void CraftHammockBox()
-        {
-            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
-            {
-                GUILayout.Label("20 x rope, 4 x Banesteriopsis vine, 2 x stick, 2 x Brazilian nut", GUI.skin.label, GUILayout.MaxWidth(200));
-                if (GUILayout.Button("Craft hammock", GUI.skin.button))
-                {
-                    OnClickCraftHammockButton();
-                    CloseWindow();
-                }
-            }
-        }
-
-        private void ScreenMenuBox()
-        {
-            if (GUI.Button(new Rect(ModCraftingScreen.width - 20f, 0f, 20f, 20f), "X", GUI.skin.button))
-            {
-                CloseWindow();
-            }
-        }
-
-        private void CloseWindow()
-        {
-            ShowUI = false;
-            EnableCursor(false);
         }
 
         private void OnClickCraftBambooBidonButton()
