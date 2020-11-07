@@ -17,6 +17,8 @@ namespace ModCrafting
 
         public static Rect ModCraftingScreen = new Rect(Screen.width / 4f, Screen.height / 4f, 450f, 150f);
 
+        public static UIList itemsDropdownList;
+
         private static ItemsManager itemsManager;
 
         private static HUDManager hUDManager;
@@ -54,8 +56,8 @@ namespace ModCrafting
             IsModActiveForMultiplayer = optionValue;
             ShowHUDBigInfo(
                           (optionValue ?
-                            HUDBigInfoMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>Permission to use mods for multiplayer was granted!</color>")
-                            : HUDBigInfoMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>Permission to use mods for multiplayer was revoked!</color>")),
+                            HUDBigInfoMessage($"Permission to use mods for multiplayer was <color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>granted!</color>")
+                            : HUDBigInfoMessage($"Permission to use mods for multiplayer was <color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>revoked!</color>")),
                            $"{ModName} Info",
                            HUDInfoLogTextureType.Count.ToString());
         }
@@ -74,6 +76,7 @@ namespace ModCrafting
         public void ShowHUDBigInfo(string text, string header, string textureName)
         {
             HUDBigInfo bigInfo = (HUDBigInfo)hUDManager.GetHUD(typeof(HUDBigInfo));
+            HUDBigInfoData.s_Duration = 5f;
             HUDBigInfoData bigInfoData = new HUDBigInfoData
             {
                 m_Header = header,
@@ -188,7 +191,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(TryClearItems)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(TryClearItems)}] throws exception: {exc.Message}");
             }
         }
 
@@ -228,56 +231,96 @@ namespace ModCrafting
         {
             using (var verticalScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
-                if (GUI.Button(new Rect(430f, 0f, 20f, 20f), "X", GUI.skin.button))
-                {
-                    CloseWindow();
-                }
+                ScreenMenuBox();
 
-                using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
-                {
-                    GUILayout.Label("20 x rope, 4 x Banesteriopsis vine, 2 x stick, 2 x Brazilian nut", GUI.skin.label, GUILayout.MaxWidth(200));
-                    if (GUILayout.Button("Craft hammock", GUI.skin.button))
-                    {
-                        OnClickCraftHammockButton();
-                        CloseWindow();
-                    }
-                }
+                CraftHammockBox();
+                CraftBambooContainerBox();
+                CraftBambooRaftBox();
 
-                using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
-                {
-                    GUILayout.Label("1 x rope, 1 x bamboo bowl", GUI.skin.label, GUILayout.MaxWidth(200f));
-                    if (GUILayout.Button("Craft bamboo container", GUI.skin.button))
-                    {
-                        OnClickCraftBambooBidonButton();
-                        CloseWindow();
-                    }
-                }
-
-                using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
-                {
-                    GUILayout.Label("4 x rope, 5 x long bamboo stick", GUI.skin.label, GUILayout.MaxWidth(200f));
-                    if (GUILayout.Button("Craft bamboo raft", GUI.skin.button))
-                    {
-                        OnClickCraftBambooRaftButton();
-                        CloseWindow();
-                    }
-                }
-
-                //GUILayout.Label("1 x rope, 1 x bamboo long stick", GUI.skin.label, GUILayout.MaxWidth(200f));
-                //if (GUILayout.Button("Craft bamboo blowpipe", GUI.skin.button))
-                //{
-                //    OnClickCraftBlowgunButton();
-                //    CloseWindow();
-                //}
-
-                //GUILayout.Label("1 x bamboo stick, 2 x feather", GUI.skin.labe, GUILayout.MaxWidth(200f));
-                //if (GUILayout.Button("Craft blowpipe dart", GUI.skin.button))
-                //{
-                //    OnClickCraftBlowgunArrowButton();
-                //    CloseWindow();
-                //}
+                TryCraftItemBox();
             }
             GUI.DragWindow(new Rect(0f, 0f, 10000f, 10000f));
+        }
+
+        private void TryCraftItemBox()
+        {
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            {
+                GUILayout.Label("Select item fom list then click Try craft", GUI.skin.label, GUILayout.MaxWidth(200f));
+
+                if (GUILayout.Button("Try craft", GUI.skin.button))
+                {
+                    OnClickTryCraftButton();
+                    CloseWindow();
+                }
+            }
+        }
+
+        private void OnClickTryCraftButton()
+        {
+            try
+            {
+                var selectedItemInfo = itemsDropdownList.GetSelectedElementData<ItemInfo>();
+                string craftedItemName = selectedItemInfo.m_Item.GetName();
+                ItemID craftedItemID = selectedItemInfo.m_ID;
+                Item craftedItem = itemsManager.CreateItem(craftedItemID, true, player.transform.position, player.transform.rotation);
+                if (craftedItem != null)
+                {
+                    CraftedItems.Add(craftedItem);
+                    ShowHUDBigInfo($"Created 1 x {craftedItem.m_Info.GetNameToDisplayLocalized()}", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                }
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickTryCraftButton)}] throws exception: {exc.Message}");
+            }
+        }
+
+        private void CraftBambooRaftBox()
+        {
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            {
+                GUILayout.Label("4 x rope, 5 x long bamboo stick", GUI.skin.label, GUILayout.MaxWidth(200f));
+                if (GUILayout.Button("Craft bamboo raft", GUI.skin.button))
+                {
+                    OnClickCraftBambooRaftButton();
+                    CloseWindow();
+                }
+            }
+        }
+
+        private void CraftBambooContainerBox()
+        {
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            {
+                GUILayout.Label("1 x rope, 1 x bamboo bowl", GUI.skin.label, GUILayout.MaxWidth(200f));
+                if (GUILayout.Button("Craft bamboo container", GUI.skin.button))
+                {
+                    OnClickCraftBambooBidonButton();
+                    CloseWindow();
+                }
+            }
+        }
+
+        private void CraftHammockBox()
+        {
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            {
+                GUILayout.Label("20 x rope, 4 x Banesteriopsis vine, 2 x stick, 2 x Brazilian nut", GUI.skin.label, GUILayout.MaxWidth(200));
+                if (GUILayout.Button("Craft hammock", GUI.skin.button))
+                {
+                    OnClickCraftHammockButton();
+                    CloseWindow();
+                }
+            }
+        }
+
+        private void ScreenMenuBox()
+        {
+            if (GUI.Button(new Rect(ModCraftingScreen.width - 20f, 0f, 20f, 20f), "X", GUI.skin.button))
+            {
+                CloseWindow();
+            }
         }
 
         private void CloseWindow()
@@ -299,7 +342,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(OnClickCraftBambooBidonButton)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickCraftBambooBidonButton)}] throws exception: {exc.Message}");
             }
         }
 
@@ -316,7 +359,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(OnClickCraftHammockButton)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickCraftHammockButton)}] throws exception: {exc.Message}");
             }
         }
 
@@ -333,7 +376,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(OnClickCraftBambooBidonButton)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickCraftBambooBidonButton)}] throws exception: {exc.Message}");
             }
         }
 
@@ -350,7 +393,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(OnClickCraftBlowgunButton)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickCraftBlowgunButton)}] throws exception: {exc.Message}");
             }
         }
 
@@ -362,7 +405,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(OnClickCraftBlowgunArrowButton)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickCraftBlowgunArrowButton)}] throws exception: {exc.Message}");
             }
         }
 
@@ -376,7 +419,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(CraftBambooContainer)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(CraftBambooContainer)}] throws exception: {exc.Message}");
                 return bambooContainerToUse;
             }
         }
@@ -391,7 +434,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(CraftHammock)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(CraftHammock)}] throws exception: {exc.Message}");
                 return hammockToUse;
             }
         }
@@ -406,7 +449,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(CraftBambooRaft)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(CraftBambooRaft)}] throws exception: {exc.Message}");
                 return raft;
             }
         }
@@ -421,7 +464,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(CraftBambooBlowgun)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(CraftBambooBlowgun)}] throws exception: {exc.Message}");
                 return blowgunToUse;
             }
         }
@@ -454,7 +497,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(CreateBambooContainer)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(CreateBambooContainer)}] throws exception: {exc.Message}");
                 return bambooContainer;
             }
         }
@@ -501,7 +544,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(CreateHammock)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(CreateHammock)}] throws exception: {exc.Message}");
                 return hammockToUse;
             }
         }
@@ -524,7 +567,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(CreateBambooRaft)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(CreateBambooRaft)}] throws exception: {exc.Message}");
                 return raft;
             }
         }
@@ -556,7 +599,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(CreateBambooBlowgun)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(CreateBambooBlowgun)}] throws exception: {exc.Message}");
                 return blowgun;
             }
         }
@@ -726,7 +769,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(GetMaxThreeBlowpipeArrow)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(GetMaxThreeBlowpipeArrow)}] throws exception: {exc.Message}");
             }
         }
 
@@ -741,7 +784,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(AddCraftingItem)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(AddCraftingItem)}] throws exception: {exc.Message}");
             }
         }
 
@@ -803,7 +846,7 @@ namespace ModCrafting
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}.{ModName}:{nameof(TryEquipBlowpipe)}] throws exception: {exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(TryEquipBlowpipe)}] throws exception: {exc.Message}");
             }
         }
 
@@ -842,6 +885,28 @@ namespace ModCrafting
         public void OnCloseDialog()
         {
             EnableCursor(false);
+        }
+
+        public void OnShow()
+        {
+            itemsDropdownList.SetFocus(focus: true);
+            Setup();
+        }
+
+        private void Setup()
+        {
+            itemsDropdownList.Clear();
+            foreach (var itemInfo in itemsManager.GetAllInfos())
+            {
+                itemsDropdownList.AddElement(itemInfo.Value.GetNameToDisplayLocalized(), itemInfo.Value);
+            }
+            itemsDropdownList.SortAlphabetically();
+            itemsDropdownList.SetSelectionIndex(0);
+        }
+
+        private void OnClear()
+        {
+            itemsDropdownList.Clear();
         }
     }
 }

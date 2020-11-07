@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("ModAPI.ModCrafting")]
-[assembly: AssemblyDescription("ModCrafting is a mod for Green Hell, that allows a player to craft a couple of specific items. For the moment, the items can be crafted, without the needed materials.")]
+[assembly: AssemblyDescription("ModCrafting is a mod for Green Hell, that allows a player to craft a couple of specific items without the needed materials. Player can choose from list.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Dragon Legion")]
 [assembly: AssemblyProduct("ModAPI.ModCrafting")]
@@ -29,5 +29,5 @@ using System.Runtime.InteropServices;
 //      Build Number
 //      Revision
 //
-[assembly: AssemblyVersion("1.0.2.8")]
-[assembly: AssemblyFileVersion("1.0.2.8")]
+[assembly: AssemblyVersion("1.0.3.0")]
+[assembly: AssemblyFileVersion("1.0.3.0")]
