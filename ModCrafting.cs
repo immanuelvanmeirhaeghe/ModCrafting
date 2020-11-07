@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace ModCrafting
 {
@@ -17,7 +18,7 @@ namespace ModCrafting
 
         public static Rect ModCraftingScreen = new Rect(Screen.width / 4f, Screen.height / 4f, 450f, 150f);
 
-        public static UIList itemsDropdownList;
+        public static DropdownMenu itemsDropdownList;
 
         private static ItemsManager itemsManager;
 
@@ -33,6 +34,9 @@ namespace ModCrafting
 
         private static InventoryBackpack inventoryBackpack;
 
+        public static string SelectedItemName;
+        public static int SelectedItemIndex;
+
         public static Item SelectedItemToDestroy;
 
         public static List<Item> CraftedItems = new List<Item>();
@@ -42,7 +46,11 @@ namespace ModCrafting
         public bool IsModActiveForMultiplayer { get; private set; }
         public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
 
-        public static string ItemDestroyedMessage() => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()} destroyed!</color>";
+        public static string ItemDestroyedMessage(string item) => $"{item} was <color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>destroyed!</color>";
+
+        public static string NoItemSelectedMessage() => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>No item selected to destroy!</color>";
+
+        public static string PermissionChangedMessage(string permission) => $"Permission to use mods and cheats in multiplayer was {permission}";
 
         private static string HUDBigInfoMessage(string message) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.red)}>System</color>\n{message}";
 
@@ -56,10 +64,9 @@ namespace ModCrafting
             IsModActiveForMultiplayer = optionValue;
             ShowHUDBigInfo(
                           (optionValue ?
-                            HUDBigInfoMessage($"Permission to use mods for multiplayer was <color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>granted!</color>")
-                            : HUDBigInfoMessage($"Permission to use mods for multiplayer was <color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>revoked!</color>")),
-                           $"{ModName} Info",
-                           HUDInfoLogTextureType.Count.ToString());
+                            HUDBigInfoMessage(PermissionChangedMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>granted!</color>"))
+                            : HUDBigInfoMessage(PermissionChangedMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>revoked!</color>")))
+                            );
         }
 
         public ModCrafting()
@@ -73,8 +80,11 @@ namespace ModCrafting
             return s_Instance;
         }
 
-        public void ShowHUDBigInfo(string text, string header, string textureName)
+        public void ShowHUDBigInfo(string text)
         {
+            string header  = $"{ModName} Info";
+            string textureName = HUDInfoLogTextureType.Count.ToString();
+
             HUDBigInfo bigInfo = (HUDBigInfo)hUDManager.GetHUD(typeof(HUDBigInfo));
             HUDBigInfoData.s_Duration = 5f;
             HUDBigInfoData bigInfoData = new HUDBigInfoData
@@ -163,7 +173,7 @@ namespace ModCrafting
                 }
                 else
                 {
-                    ShowHUDBigInfo(OnlyForSinglePlayerOrHostMessage(), $"{ModName} Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo(OnlyForSinglePlayerOrHostMessage());
                 }
             }
             catch (Exception exc)
@@ -247,7 +257,7 @@ namespace ModCrafting
             using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
                 GUILayout.Label("Select item fom list then click Try craft", GUI.skin.label, GUILayout.MaxWidth(200f));
-
+                SelectedItemIndex = GUILayout.SelectionGrid(SelectedItemIndex, GetItems(), 3, GUI.skin.button);
                 if (GUILayout.Button("Try craft", GUI.skin.button))
                 {
                     OnClickTryCraftButton();
@@ -256,18 +266,31 @@ namespace ModCrafting
             }
         }
 
+        private string[] GetItems()
+        {
+            string[] itemNames = Enum.GetNames(typeof(ItemID));
+
+            for (int i = 0; i < itemNames.Length; i++)
+            {
+                string itemName = itemNames[i];
+                itemNames[i] = itemName.Replace("_", " ");
+            }
+
+            return itemNames;
+        }
+
         private void OnClickTryCraftButton()
         {
             try
             {
-                var selectedItemInfo = itemsDropdownList.GetSelectedElementData<ItemInfo>();
-                string craftedItemName = selectedItemInfo.m_Item.GetName();
-                ItemID craftedItemID = selectedItemInfo.m_ID;
-                Item craftedItem = itemsManager.CreateItem(craftedItemID, true, player.transform.position, player.transform.rotation);
+                string[] itemNames = GetItems();
+                SelectedItemName = itemNames[SelectedItemIndex].Replace(" ", "_");
+                ItemID selectedItemID = EnumUtils<ItemID>.GetValue(SelectedItemName);
+                Item craftedItem = itemsManager.CreateItem(selectedItemID, true, player.transform.position, player.transform.rotation);
                 if (craftedItem != null)
                 {
                     CraftedItems.Add(craftedItem);
-                    ShowHUDBigInfo($"Created 1 x {craftedItem.m_Info.GetNameToDisplayLocalized()}", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {craftedItem.m_Info.GetNameToDisplayLocalized()}");
                 }
             }
             catch (Exception exc)
@@ -337,7 +360,7 @@ namespace ModCrafting
                 if (bambooBidon != null)
                 {
                     CraftedItems.Add(bambooBidon);
-                    ShowHUDBigInfo($"Created 1 x {bambooBidon.m_Info.GetNameToDisplayLocalized()}", $"{ModName} Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {bambooBidon.m_Info.GetNameToDisplayLocalized()}");
                 }
             }
             catch (Exception exc)
@@ -354,7 +377,7 @@ namespace ModCrafting
                 if (hammock != null)
                 {
                     CraftedItems.Add(hammock);
-                    ShowHUDBigInfo($"Created 1 x {hammock.m_Info.GetNameToDisplayLocalized()}", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {hammock.m_Info.GetNameToDisplayLocalized()}");
                 }
             }
             catch (Exception exc)
@@ -371,7 +394,7 @@ namespace ModCrafting
                 if (raft != null)
                 {
                     CraftedItems.Add(raft);
-                    ShowHUDBigInfo($"Created 1 x {raft.m_Info.GetNameToDisplayLocalized()}", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {raft.m_Info.GetNameToDisplayLocalized()}");
                 }
             }
             catch (Exception exc)
@@ -388,7 +411,7 @@ namespace ModCrafting
                 if (blowgun != null)
                 {
                     CraftedItems.Add(blowgun);
-                    ShowHUDBigInfo($"Created 1 x {blowgun.m_Info.GetNameToDisplayLocalized()}", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Created 1 x {blowgun.m_Info.GetNameToDisplayLocalized()}");
                 }
             }
             catch (Exception exc)
@@ -765,7 +788,7 @@ namespace ModCrafting
                 {
                     player.AddItemToInventory(blowPipeArrowItemInfo.m_ID.ToString());
                 }
-                ShowHUDBigInfo($"Added {count} x {blowPipeArrowItemInfo.GetNameToDisplayLocalized()} to inventory", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                ShowHUDBigInfo($"Added {count} x {blowPipeArrowItemInfo.GetNameToDisplayLocalized()} to inventory");
             }
             catch (Exception exc)
             {
@@ -837,11 +860,11 @@ namespace ModCrafting
 
                 if (equippedSlot != null)
                 {
-                    ShowHUDBigInfo($"Blowpipe has been equipped!", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Blowpipe has been equipped!");
                 }
                 else
                 {
-                    ShowHUDBigInfo($"Cannot find blowpipe to equip!", $"{ModName}  Info", HUDInfoLogTextureType.Count.ToString());
+                    ShowHUDBigInfo($"Cannot find blowpipe to equip!");
                 }
             }
             catch (Exception exc)
@@ -855,18 +878,22 @@ namespace ModCrafting
             if (SelectedItemToDestroy != null)
             {
                 SelectedItemToDestroy.TakeDamage(new DamageInfo { m_Damage = 100f, m_CriticalHit = true, m_DamageType = DamageType.Melee });
-                Destroy(SelectedItemToDestroy);
+                itemsManager.AddItemToDestroy(SelectedItemToDestroy);
                 ShowHUDBigInfo(
-                    HUDBigInfoMessage(ItemDestroyedMessage()),
-                    $"{ModName} Info",
-                    HUDInfoLogTextureType.Count.ToString());
+                    HUDBigInfoMessage(
+                        ItemDestroyedMessage(
+                            SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()
+                        )
+                    )
+                );
             }
             else
             {
                 ShowHUDBigInfo(
-                   HUDBigInfoMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>No item selected to destroy!</color>"),
-                   $"{ModName} Info",
-                   HUDInfoLogTextureType.Count.ToString());
+                   HUDBigInfoMessage(
+                       NoItemSelectedMessage()
+                   )
+                );
             }
             EnableCursor(false);
         }
@@ -885,28 +912,6 @@ namespace ModCrafting
         public void OnCloseDialog()
         {
             EnableCursor(false);
-        }
-
-        public void OnShow()
-        {
-            itemsDropdownList.SetFocus(focus: true);
-            Setup();
-        }
-
-        private void Setup()
-        {
-            itemsDropdownList.Clear();
-            foreach (var itemInfo in itemsManager.GetAllInfos())
-            {
-                itemsDropdownList.AddElement(itemInfo.Value.GetNameToDisplayLocalized(), itemInfo.Value);
-            }
-            itemsDropdownList.SortAlphabetically();
-            itemsDropdownList.SetSelectionIndex(0);
-        }
-
-        private void OnClear()
-        {
-            itemsDropdownList.Clear();
         }
     }
 }
