@@ -698,7 +698,10 @@ namespace ModCrafting
         {
             if (SelectedItemToDestroy != null)
             {
-                SelectedItemToDestroy.TakeDamage(new DamageInfo { m_Damage = 100f, m_CriticalHit = true, m_DamageType = DamageType.Melee });
+                if (SelectedItemToDestroy.m_Info.IsConstruction())
+                {
+                    SelectedItemToDestroy.TakeDamage(new DamageInfo { m_Damage = 100f, m_CriticalHit = true, m_DamageType = DamageType.Melee });
+                }
                 itemsManager.AddItemToDestroy(SelectedItemToDestroy);
                 ShowHUDBigInfo(
                     HUDBigInfoMessage(
