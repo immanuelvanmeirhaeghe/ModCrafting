@@ -3,9 +3,7 @@ using ModCrafting.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace ModCrafting
 {
@@ -22,7 +20,7 @@ namespace ModCrafting
 
         public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, ModScreenWidth, ModScreenHeight);
 
-        public static Vector2 CraftItemScrollPosition;
+        public static Vector2 FilteredItemsScrollViewPosition;
 
         private static ItemsManager LocalItemsManager;
 
@@ -246,11 +244,9 @@ namespace ModCrafting
             using (var verticalScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
                 ScreenMenuBox();
-
                 CraftHammockBox();
                 CraftBambooContainerBox();
                 CraftBambooRaftBox();
-
                 CraftSelectedItemBox();
             }
             GUI.DragWindow(new Rect(0f, 0f, 10000f, 10000f));
@@ -291,48 +287,63 @@ namespace ModCrafting
 
         private void CraftBambooRaftBox()
         {
-            if (GUILayout.Button("Craft bamboo raft", GUI.skin.button))
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                OnClickCraftBambooRaftButton();
-                CloseWindow();
+                if (GUILayout.Button("Craft bamboo raft", GUI.skin.button))
+                {
+                    OnClickCraftBambooRaftButton();
+                    CloseWindow();
+                }
             }
         }
 
         private void CraftBambooContainerBox()
         {
-            if (GUILayout.Button("Craft bamboo container", GUI.skin.button))
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                OnClickCraftBambooBidonButton();
-                CloseWindow();
+                if (GUILayout.Button("Craft bamboo container", GUI.skin.button))
+                {
+                    OnClickCraftBambooBidonButton();
+                    CloseWindow();
+                }
             }
         }
 
         private void CraftHammockBox()
         {
-            if (GUILayout.Button("Craft hammock", GUI.skin.button))
+            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                OnClickCraftHammockButton();
-                CloseWindow();
+                if (GUILayout.Button("Craft village hammock A", GUI.skin.button))
+                {
+                    OnClickCraftHammockButton();
+                    CloseWindow();
+                }
             }
         }
 
         private void CraftSelectedItemBox()
         {
             ItemFilterBox();
-
             ItemViewBox();
         }
 
         private string[] GetFilters()
         {
-            string[] filters = Enum.GetNames(typeof(ItemFilter));
+            string[] filters = default;
+            int filterIdx = 0;
+            EnumUtils<ItemFilter>.ForeachName(
+                filterName =>
+                {
+                    filters[filterIdx] = filterName;
+                    filterIdx++;
+                });
             return filters;
         }
 
         private string[] GetFilteredItems(ItemFilter filter)
         {
             int itemNameIdx = 0;
-            string[] itemNames = default;
+            string[] filteredItemNames = default;
             List<ItemInfo> allItemInfos = LocalItemsManager.GetAllInfos().Values.ToList();
             List<ItemInfo> filteredInfos = default;
             switch (filter)
@@ -362,37 +373,42 @@ namespace ModCrafting
 
             foreach (ItemInfo filteredInfo in filteredInfos)
             {
-                string itemName = filteredInfo.m_ID.ToString();
-                itemNames[itemNameIdx] = itemName.Replace("_", " ");
+                string filteredItemName = filteredInfo.m_ID.ToString();
+                filteredItemNames[itemNameIdx] = filteredItemName.Replace("_", " ");
             }
-            return itemNames;
+            return filteredItemNames;
         }
 
         private void ItemFilterBox()
         {
-            GUILayout.Label("Select filter: ", GUI.skin.label);
-
-            string[] filters = GetFilters();
-            if (filters != null)
+            using (var contentScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
-                int filtersCount = filters.Length;
-                SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
-                if (GUILayout.Button($"Filter items", GUI.skin.button))
+                string[] filters = GetFilters();
+                if (filters != null)
                 {
-                    OnClickFilterItemsButton();
-                    CloseWindow();
+                    int filtersCount = filters.Length;
+                    GUILayout.Label("Select filter: ", GUI.skin.label);
+                    SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
+                    if (GUILayout.Button($"Filter items", GUI.skin.button))
+                    {
+                        OnClickFilterItemsButton();
+                        CloseWindow();
+                    }
                 }
             }
         }
 
         private void ItemViewBox()
         {
-            GUILayout.Label("Select item: ", GUI.skin.label);
-            FilteredItemsScrollView();
-            if (GUILayout.Button($"Craft selected", GUI.skin.button))
+            using (var itemsContentScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
-                OnClickCraftSelectedItemButton();
-                CloseWindow();
+                GUILayout.Label("Select item: ", GUI.skin.label);
+                FilteredItemsScrollView();
+                if (GUILayout.Button($"Craft selected", GUI.skin.button))
+                {
+                    OnClickCraftSelectedItemButton();
+                    CloseWindow();
+                }
             }
         }
 
@@ -408,13 +424,13 @@ namespace ModCrafting
 
         private void FilteredItemsScrollView()
         {
+            FilteredItemsScrollViewPosition = GUILayout.BeginScrollView(FilteredItemsScrollViewPosition, GUI.skin.scrollView, GUILayout.MinHeight(300f));
             string[] filteredItemNames = GetFilteredItems(SelectedFilter);
             if (filteredItemNames != null)
             {
-                CraftItemScrollPosition = GUILayout.BeginScrollView(CraftItemScrollPosition, GUI.skin.scrollView, GUILayout.MinHeight(300f));
                 SelectedItemToCraftIndex = GUILayout.SelectionGrid(SelectedItemToCraftIndex, filteredItemNames, 3, GUI.skin.button);
-                GUILayout.EndScrollView();
             }
+            GUILayout.EndScrollView();
         }
 
         private void OnClickCraftSelectedItemButton()
