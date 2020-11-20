@@ -1,4 +1,5 @@
 using Enums;
+using ModCrafting.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,34 +14,40 @@ namespace ModCrafting
         private static ModCrafting s_Instance;
 
         private static readonly string ModName = nameof(ModCrafting);
-
+        private static readonly float ModScreenWidth = 750f;
+        private static readonly float ModScreenHeight = 430f;
+        private static bool IsMinimized { get; set; } = false;
+        private static bool LocalOptionState { get; set; }
         private bool ShowUI = false;
 
-        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, 750f, 230f);
+        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, ModScreenWidth, ModScreenHeight);
 
-        public static Vector2 scrollPosition;
+        public static Vector2 CraftItemScrollPosition;
 
-        private static ItemsManager itemsManager;
+        private static ItemsManager LocalItemsManager;
 
-        private static HUDManager hUDManager;
+        private static HUDManager LocalHUDManager;
 
-        private static Player player;
+        private static Player LocalPlayer;
 
-        private static InventoryBackpack inventoryBackpack;
+        private static InventoryBackpack LocalInventoryBackpack;
 
-        public static string SelectedItemName;
-        public static int SelectedItemIndex;
-
-        private static Item SelectedItemToDestroy;
+        public static string SelectedItemToCraftItemName;
+        public static int SelectedItemToCraftIndex;
+        public static ItemID SelectedItemToCraftItemID;
+        public static Item SelectedItemToCraft;
+        public static Item SelectedItemToDestroy;
 
         public static List<Item> CraftedItems = new List<Item>();
-
-        public bool UseOption { get; private set; }
 
         public bool IsModActiveForMultiplayer { get; private set; }
         public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
 
-        public static string ItemDestroyedMessage(string item) => $"{item} was <color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>destroyed!</color>";
+        public string SelectedFilterName { get; private set; }
+        public int SelectedFilterIndex { get; private set; }
+        public ItemFilter SelectedFilter { get; private set; } = ItemFilter.All;
+
+        public static string ItemDestroyedMessage(string item) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{item} destroyed!</color>";
 
         public static string NoItemSelectedMessage() => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>No item selected to destroy!</color>";
 
@@ -50,7 +57,7 @@ namespace ModCrafting
 
         public static string PermissionChangedMessage(string permission) => $"Permission to use mods and cheats in multiplayer was {permission}";
 
-        private static string HUDBigInfoMessage(string message) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.red)}>System</color>\n{message}";
+        public static string HUDBigInfoMessage(string message) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.red)}>System</color>\n{message}";
 
         public void Start()
         {
@@ -83,7 +90,7 @@ namespace ModCrafting
             string header = $"{ModName} Info";
             string textureName = HUDInfoLogTextureType.Count.ToString();
 
-            HUDBigInfo bigInfo = (HUDBigInfo)hUDManager.GetHUD(typeof(HUDBigInfo));
+            HUDBigInfo bigInfo = (HUDBigInfo)LocalHUDManager.GetHUD(typeof(HUDBigInfo));
             HUDBigInfoData.s_Duration = 5f;
             HUDBigInfoData bigInfoData = new HUDBigInfoData
             {
@@ -99,7 +106,7 @@ namespace ModCrafting
         public void ShowHUDInfoLog(string itemID, string localizedTextKey)
         {
             var localization = GreenHellGame.Instance.GetLocalization();
-            HUDMessages hUDMessages = (HUDMessages)hUDManager.GetHUD(typeof(HUDMessages));
+            HUDMessages hUDMessages = (HUDMessages)LocalHUDManager.GetHUD(typeof(HUDMessages));
             hUDMessages.AddMessage(
                 $"{localization.Get(localizedTextKey)}  {localization.Get(itemID)}"
                 );
@@ -111,15 +118,15 @@ namespace ModCrafting
 
             if (blockPlayer)
             {
-                player.BlockMoves();
-                player.BlockRotation();
-                player.BlockInspection();
+                LocalPlayer.BlockMoves();
+                LocalPlayer.BlockRotation();
+                LocalPlayer.BlockInspection();
             }
             else
             {
-                player.UnblockMoves();
-                player.UnblockRotation();
-                player.UnblockInspection();
+                LocalPlayer.UnblockMoves();
+                LocalPlayer.UnblockRotation();
+                LocalPlayer.UnblockInspection();
             }
         }
 
@@ -195,7 +202,7 @@ namespace ModCrafting
             {
                 foreach (Item item in CraftedItems)
                 {
-                    itemsManager.AddItemToDestroy(item);
+                    LocalItemsManager.AddItemToDestroy(item);
                 }
             }
             catch (Exception exc)
@@ -222,11 +229,11 @@ namespace ModCrafting
 
         private void InitData()
         {
-            itemsManager = ItemsManager.Get();
-            hUDManager = HUDManager.Get();
-            player = Player.Get();
+            LocalItemsManager = ItemsManager.Get();
+            LocalHUDManager = HUDManager.Get();
+            LocalPlayer = Player.Get();
 
-            inventoryBackpack = InventoryBackpack.Get();
+            LocalInventoryBackpack = InventoryBackpack.Get();
         }
 
         private void InitSkinUI()
@@ -244,77 +251,35 @@ namespace ModCrafting
                 CraftBambooContainerBox();
                 CraftBambooRaftBox();
 
-                CraftItemBox();
+                CraftSelectedItemBox();
             }
             GUI.DragWindow(new Rect(0f, 0f, 10000f, 10000f));
         }
 
-        private void CraftItemBox()
-        {
-            using (var verScope = new GUILayout.VerticalScope(GUI.skin.box))
-            {
-                GUILayout.Label("Select item from list then click Try craft", GUI.skin.label, GUILayout.MaxWidth(200f));
-
-                ScrollingitemsView();
-
-                if (GUILayout.Button("Try craft", GUI.skin.button))
-                {
-                    OnClickTryCraftButton();
-                    CloseWindow();
-                }
-            }
-        }
-
-        private void ScrollingitemsView()
-        {
-            scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUI.skin.scrollView, GUILayout.MinHeight(300f));
-
-            SelectedItemIndex = GUILayout.SelectionGrid(SelectedItemIndex, GetItems(), 3, GUI.skin.button);
-
-            GUILayout.EndScrollView();
-        }
-
         private void ScreenMenuBox()
         {
+            if (GUI.Button(new Rect(ModCraftingScreen.width - 40f, 0f, 20f, 20f), "_", GUI.skin.button))
+            {
+                ResizeWindow();
+            }
+
             if (GUI.Button(new Rect(ModCraftingScreen.width - 20f, 0f, 20f, 20f), "X", GUI.skin.button))
             {
                 CloseWindow();
             }
         }
 
-        private void CraftBambooRaftBox()
+        private void ResizeWindow()
         {
-            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            if (!IsMinimized)
             {
-                if (GUILayout.Button("Craft bamboo raft", GUI.skin.button))
-                {
-                    OnClickCraftBambooRaftButton();
-                    CloseWindow();
-                }
+                ModCraftingScreen.Set(ModCraftingScreen.x, ModCraftingScreen.y, ModScreenWidth, 0f);
+                IsMinimized = true;
             }
-        }
-
-        private void CraftBambooContainerBox()
-        {
-            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            else
             {
-                if (GUILayout.Button("Craft bamboo container", GUI.skin.button))
-                {
-                    OnClickCraftBambooBidonButton();
-                    CloseWindow();
-                }
-            }
-        }
-
-        private void CraftHammockBox()
-        {
-            using (var horizontalScope = new GUILayout.HorizontalScope(GUI.skin.box))
-            {
-                if (GUILayout.Button("Craft hammock", GUI.skin.button))
-                {
-                    OnClickCraftHammockButton();
-                    CloseWindow();
-                }
+                ModCraftingScreen.Set(ModCraftingScreen.x, ModCraftingScreen.y, ModScreenWidth, ModScreenHeight);
+                IsMinimized = false;
             }
         }
 
@@ -324,49 +289,167 @@ namespace ModCrafting
             EnableCursor(false);
         }
 
-        private string[] GetItems()
+        private void CraftBambooRaftBox()
         {
-            string[] itemNames = Enum.GetNames(typeof(ItemID));
-
-            for (int i = 0; i < itemNames.Length; i++)
+            if (GUILayout.Button("Craft bamboo raft", GUI.skin.button))
             {
-                string itemName = itemNames[i];
-                itemNames[i] = itemName.Replace("_", " ");
+                OnClickCraftBambooRaftButton();
+                CloseWindow();
+            }
+        }
+
+        private void CraftBambooContainerBox()
+        {
+            if (GUILayout.Button("Craft bamboo container", GUI.skin.button))
+            {
+                OnClickCraftBambooBidonButton();
+                CloseWindow();
+            }
+        }
+
+        private void CraftHammockBox()
+        {
+            if (GUILayout.Button("Craft hammock", GUI.skin.button))
+            {
+                OnClickCraftHammockButton();
+                CloseWindow();
+            }
+        }
+
+        private void CraftSelectedItemBox()
+        {
+            ItemFilterBox();
+
+            ItemViewBox();
+        }
+
+        private string[] GetFilters()
+        {
+            string[] filters = Enum.GetNames(typeof(ItemFilter));
+            return filters;
+        }
+
+        private string[] GetFilteredItems(ItemFilter filter)
+        {
+            int itemNameIdx = 0;
+            string[] itemNames = default;
+            List<ItemInfo> allItemInfos = LocalItemsManager.GetAllInfos().Values.ToList();
+            List<ItemInfo> filteredInfos = default;
+            switch (filter)
+            {
+                case ItemFilter.Resources:
+                    filteredInfos = allItemInfos.Where(info => info.IsStone() || info.IsSeed() || info.IsMeat() || info.IsFood() || info.IsConsumable() || info.IsDressing() || info.IsHeavyObject()
+                                                                                  || info.m_ID.IsLeaf() || info.m_ID.IsPlant() || info.m_ID.IsTree()
+                                                                                  || info.m_Item.IsFish() || info.m_Item.IsLiquidSource()).ToList();
+                    break;
+                case ItemFilter.Construction:
+                    filteredInfos = allItemInfos.Where(info => info.IsConstruction()).ToList();
+                    break;
+                case ItemFilter.Tools:
+                    filteredInfos = allItemInfos.Where(info => info.IsTool()).ToList();
+                    break;
+                case ItemFilter.Weapons:
+                    filteredInfos = allItemInfos.Where(info => info.IsWeapon()).ToList();
+                    break;
+                case ItemFilter.Armor:
+                    filteredInfos = allItemInfos.Where(info => info.IsArmor()).ToList();
+                    break;
+                case ItemFilter.All:
+                default:
+                    filteredInfos = allItemInfos;
+                    break;
             }
 
+            foreach (ItemInfo filteredInfo in filteredInfos)
+            {
+                string itemName = filteredInfo.m_ID.ToString();
+                itemNames[itemNameIdx] = itemName.Replace("_", " ");
+            }
             return itemNames;
         }
 
-        private void OnClickTryCraftButton()
+        private void ItemFilterBox()
+        {
+            GUILayout.Label("Select filter: ", GUI.skin.label);
+
+            string[] filters = GetFilters();
+            if (filters != null)
+            {
+                int filtersCount = filters.Length;
+                SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
+                if (GUILayout.Button($"Filter items", GUI.skin.button))
+                {
+                    OnClickFilterItemsButton();
+                    CloseWindow();
+                }
+            }
+        }
+
+        private void ItemViewBox()
+        {
+            GUILayout.Label("Select item: ", GUI.skin.label);
+            FilteredItemsScrollView();
+            if (GUILayout.Button($"Craft selected", GUI.skin.button))
+            {
+                OnClickCraftSelectedItemButton();
+                CloseWindow();
+            }
+        }
+
+        private void OnClickFilterItemsButton()
+        {
+            string[] filters = GetFilters();
+            if (filters != null)
+            {
+                SelectedFilterName = filters[SelectedFilterIndex];
+                SelectedFilter = EnumUtils<ItemFilter>.GetValue(SelectedFilterName);
+            }
+        }
+
+        private void FilteredItemsScrollView()
+        {
+            string[] filteredItemNames = GetFilteredItems(SelectedFilter);
+            if (filteredItemNames != null)
+            {
+                CraftItemScrollPosition = GUILayout.BeginScrollView(CraftItemScrollPosition, GUI.skin.scrollView, GUILayout.MinHeight(300f));
+                SelectedItemToCraftIndex = GUILayout.SelectionGrid(SelectedItemToCraftIndex, filteredItemNames, 3, GUI.skin.button);
+                GUILayout.EndScrollView();
+            }
+        }
+
+        private void OnClickCraftSelectedItemButton()
         {
             try
             {
-                string[] itemNames = GetItems();
-                SelectedItemName = itemNames[SelectedItemIndex].Replace(" ", "_");
-                ItemID selectedItemID = EnumUtils<ItemID>.GetValue(SelectedItemName);
-                GameObject prefab = GreenHellGame.Instance.GetPrefab(SelectedItemName);
-                Item craftedItem = CreateItem(prefab, true, player.transform.position, player.transform.rotation);
-                if (craftedItem != null)
+                string[] filteredItemNames = GetFilteredItems(SelectedFilter);
+                SelectedItemToCraftItemName = filteredItemNames[SelectedItemToCraftIndex].Replace(" ", "_");
+                SelectedItemToCraftItemID = EnumUtils<ItemID>.GetValue(SelectedItemToCraftItemName);
+                GameObject prefab = GreenHellGame.Instance.GetPrefab(SelectedItemToCraftItemName);
+                if (prefab != null)
                 {
-                    CraftedItems.Add(craftedItem);
-                    ShowHUDBigInfo(
-                        HUDBigInfoMessage(
-                            ItemCraftedMessage(craftedItem.m_Info.GetNameToDisplayLocalized(), 1)
-                        )
-                    );
-                }
-                else
-                {
-                    ShowHUDBigInfo(
-                        HUDBigInfoMessage(
-                            NoItemCraftedMessage()
-                        )
-                    );
+                    SelectedItemToCraft = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 2f, LocalPlayer.transform.rotation);
+                    if (SelectedItemToCraft != null)
+                    {
+                        CraftedItems.Add(SelectedItemToCraft);
+                        ShowHUDBigInfo(
+                            HUDBigInfoMessage(
+                                ItemCraftedMessage(SelectedItemToCraft.m_Info.GetNameToDisplayLocalized(), 1)
+                            )
+                        );
+                    }
+                    else
+                    {
+                        ShowHUDBigInfo(
+                            HUDBigInfoMessage(
+                                NoItemCraftedMessage()
+                            )
+                        );
+                    }
                 }
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickTryCraftButton)}] throws exception:\n{exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickCraftSelectedItemButton)}] throws exception:\n{exc.Message}");
             }
         }
 
@@ -457,47 +540,6 @@ namespace ModCrafting
             }
         }
 
-        private void OnClickCraftBlowgunButton()
-        {
-            try
-            {
-                Item blowgun = CraftBambooBlowgun();
-                if (blowgun != null)
-                {
-                    CraftedItems.Add(blowgun);
-                    ShowHUDBigInfo(
-                       HUDBigInfoMessage(
-                           ItemCraftedMessage(blowgun.m_Info.GetNameToDisplayLocalized(), 1)
-                       )
-                   );
-                }
-                else
-                {
-                    ShowHUDBigInfo(
-                        HUDBigInfoMessage(
-                            NoItemCraftedMessage()
-                        )
-                    );
-                }
-            }
-            catch (Exception exc)
-            {
-                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickCraftBlowgunButton)}] throws exception:\n{exc.Message}");
-            }
-        }
-
-        private void OnClickCraftBlowgunArrowButton()
-        {
-            try
-            {
-                GetMaxThreeBlowpipeArrow();
-            }
-            catch (Exception exc)
-            {
-                ModAPI.Log.Write($"[{ModName}:{nameof(OnClickCraftBlowgunArrowButton)}] throws exception:\n{exc.Message}");
-            }
-        }
-
         public Item CraftBambooContainer()
         {
             Item bambooContainerToUse = null;
@@ -543,21 +585,6 @@ namespace ModCrafting
             }
         }
 
-        public Item CraftBambooBlowgun()
-        {
-            Item blowgunToUse = null;
-            try
-            {
-                blowgunToUse = CreateBambooBlowgun();
-                return blowgunToUse;
-            }
-            catch (Exception exc)
-            {
-                ModAPI.Log.Write($"[{ModName}:{nameof(CraftBambooBlowgun)}] throws exception:\n{exc.Message}");
-                return blowgunToUse;
-            }
-        }
-
         private Item CreateBambooContainer()
         {
             Item bambooContainer = null;
@@ -565,7 +592,7 @@ namespace ModCrafting
             {
                 string m_InfoName = ItemID.Bamboo_Container.ToString();
                 GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
-                bambooContainer = CreateItem(prefab, true, player.transform.position + player.transform.forward * 2f, player.transform.rotation);
+                bambooContainer = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 2f, LocalPlayer.transform.rotation);
                 return bambooContainer;
             }
             catch (Exception exc)
@@ -582,7 +609,7 @@ namespace ModCrafting
             {
                 string m_InfoName = ItemID.village_hammock_a.ToString();
                 GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
-                hammockToUse = CreateItem(prefab, true, player.transform.position + player.transform.forward * 2f + player.transform.up * 1f, player.transform.rotation);
+                hammockToUse = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 2f + LocalPlayer.transform.up * 1f, LocalPlayer.transform.rotation);
                 return hammockToUse;
             }
             catch (Exception exc)
@@ -599,7 +626,7 @@ namespace ModCrafting
             {
                 string m_InfoName = ItemID.raft.ToString();
                 GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
-                raft = CreateItem(prefab, true, player.transform.position + player.transform.forward * 2f, player.transform.rotation);
+                raft = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 2f, LocalPlayer.transform.rotation);
                 return raft;
             }
             catch (Exception exc)
@@ -609,89 +636,9 @@ namespace ModCrafting
             }
         }
 
-        private Item CreateBambooBlowgun()
-        {
-            Item blowgun = null;
-            try
-            {
-                string m_InfoName = ItemID.Bamboo_Blowpipe.ToString();
-                GameObject prefab = GreenHellGame.Instance.GetPrefab(m_InfoName);
-                blowgun = CreateItem(prefab, true, player.transform.position + player.transform.forward * 2f, player.transform.rotation);
-                return blowgun;
-            }
-            catch (Exception exc)
-            {
-                ModAPI.Log.Write($"[{ModName}:{nameof(CreateBambooBlowgun)}] throws exception:\n{exc.Message}");
-                return blowgun;
-            }
-        }
-
         private Item CreateItem(GameObject prefab, bool im_register, Vector3 position, Quaternion rotation)
         {
-            return itemsManager.CreateItem(prefab, im_register, position, rotation);
-        }
-
-        public void GetMaxThreeBlowpipeArrow(int count = 1)
-        {
-            try
-            {
-                if (count <= 0)
-                {
-                    count = 1;
-                }
-                if (count > 3)
-                {
-                    count = 3;
-                }
-                string blowpipeArrow = ItemID.Blowpipe_Arrow.ToString();
-                string itemName = itemsManager.GetInfo(ItemID.Blowpipe_Arrow).GetNameToDisplayLocalized();
-
-                for (int i = 0; i < count; i++)
-                {
-                    player.AddItemToInventory(blowpipeArrow);
-                }
-                ShowHUDBigInfo(
-                   HUDBigInfoMessage(
-                       ItemCraftedMessage(itemName, count)
-                   )
-               );
-            }
-            catch (Exception exc)
-            {
-                ModAPI.Log.Write($"[{ModName}:{nameof(GetMaxThreeBlowpipeArrow)}] throws exception:\n{exc.Message}");
-            }
-        }
-
-        private bool CanEquipItem
-        {
-            get
-            {
-                if (HarvestingAnimalController.Get().IsActive())
-                {
-                    return false;
-                }
-                if (MudMixerController.Get().IsActive())
-                {
-                    return false;
-                }
-                if (HarvestingSmallAnimalController.Get().IsActive())
-                {
-                    return false;
-                }
-                if (FishingController.Get().IsActive() && !FishingController.Get().CanHideRod())
-                {
-                    return false;
-                }
-                if (player.m_Animator.GetBool(player.m_CleanUpHash))
-                {
-                    return false;
-                }
-                if (ScenarioManager.Get().IsBoolVariableTrue("PlayerMechGameEnding"))
-                {
-                    return false;
-                }
-                return true;
-            }
+            return LocalItemsManager.CreateItem(prefab, im_register, position, rotation);
         }
 
         public void OnYesFromDialog()
@@ -702,7 +649,7 @@ namespace ModCrafting
                 {
                     SelectedItemToDestroy.TakeDamage(new DamageInfo { m_Damage = 100f, m_CriticalHit = true, m_DamageType = DamageType.Melee });
                 }
-                itemsManager.AddItemToDestroy(SelectedItemToDestroy);
+                LocalItemsManager.AddItemToDestroy(SelectedItemToDestroy);
                 ShowHUDBigInfo(
                     HUDBigInfoMessage(
                         ItemDestroyedMessage(
