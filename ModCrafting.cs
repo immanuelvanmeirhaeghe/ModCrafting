@@ -9,7 +9,7 @@ namespace ModCrafting
 {
     public class ModCrafting : MonoBehaviour, IYesNoDialogOwner
     {
-        private static ModCrafting s_Instance;
+        private static ModCrafting Instance;
 
         private static readonly string ModName = nameof(ModCrafting);
         private static readonly float ModScreenWidth = 750f;
@@ -75,12 +75,12 @@ namespace ModCrafting
         public ModCrafting()
         {
             useGUILayout = true;
-            s_Instance = this;
+            Instance = this;
         }
 
         public static ModCrafting Get()
         {
-            return s_Instance;
+            return Instance;
         }
 
         public void ShowHUDBigInfo(string text)
@@ -329,21 +329,14 @@ namespace ModCrafting
 
         private string[] GetFilters()
         {
-            string[] filters = default;
-            int filterIdx = 0;
-            EnumUtils<ItemFilter>.ForeachName(
-                filterName =>
-                {
-                    filters[filterIdx] = filterName;
-                    filterIdx++;
-                });
-            return filters;
+            List<string> filters = new List<string>();
+            EnumUtils<ItemFilter>.ForeachName(filterName => filters.Add(filterName));
+            return filters.ToArray();
         }
 
         private string[] GetFilteredItems(ItemFilter filter)
         {
-            int itemNameIdx = 0;
-            string[] filteredItemNames = default;
+            List<string> filteredItemNames = new List<string>();
             List<ItemInfo> allItemInfos = LocalItemsManager.GetAllInfos().Values.ToList();
             List<ItemInfo> filteredInfos = default;
             switch (filter)
@@ -374,9 +367,9 @@ namespace ModCrafting
             foreach (ItemInfo filteredInfo in filteredInfos)
             {
                 string filteredItemName = filteredInfo.m_ID.ToString();
-                filteredItemNames[itemNameIdx] = filteredItemName.Replace("_", " ");
+                filteredItemNames.Add(filteredItemName.Replace("_", " "));
             }
-            return filteredItemNames;
+            return filteredItemNames.ToArray();
         }
 
         private void ItemFilterBox()
