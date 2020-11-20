@@ -260,7 +260,7 @@ namespace ModCrafting
         {
             if (GUI.Button(new Rect(ModCraftingScreen.width - 40f, 0f, 20f, 20f), "_", GUI.skin.button))
             {
-                ResizeWindow();
+                CollapseWindow();
             }
 
             if (GUI.Button(new Rect(ModCraftingScreen.width - 20f, 0f, 20f, 20f), "X", GUI.skin.button))
@@ -269,11 +269,11 @@ namespace ModCrafting
             }
         }
 
-        private void ResizeWindow()
+        private void CollapseWindow()
         {
             if (!IsMinimized)
             {
-                ModCraftingScreen.Set(ModCraftingScreen.x, ModCraftingScreen.y, ModScreenWidth, 0f);
+                ModCraftingScreen.Set(ModCraftingScreen.x, ModCraftingScreen.y, ModScreenWidth, 30f);
                 IsMinimized = true;
             }
             else
