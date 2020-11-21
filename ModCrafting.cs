@@ -13,7 +13,7 @@ namespace ModCrafting
 
         private static readonly string ModName = nameof(ModCrafting);
         private static readonly float ModScreenWidth = 850f;
-        private static readonly float ModScreenHeight = 430f;
+        private static readonly float ModScreenHeight = 500f;
         private static bool IsMinimized { get; set; } = false;
         private static bool LocalOptionState { get; set; }
         private bool ShowUI = false;
@@ -34,7 +34,7 @@ namespace ModCrafting
         public static int SelectedFilterIndex;
         public static ItemFilter SelectedFilter = ItemFilter.All;
         public static string ItemCountToCraft;
-
+        public static bool ShouldAddToBackpackOption;
         public static List<Item> CraftedItems = new List<Item>();
 
         public bool IsModActiveForMultiplayer { get; private set; }
@@ -248,7 +248,7 @@ namespace ModCrafting
 
         private void ScreenMenuBox()
         {
-            if (GUI.Button(new Rect(ModCraftingScreen.width - 40f, 0f, 20f, 20f), "_", GUI.skin.button))
+            if (GUI.Button(new Rect(ModCraftingScreen.width - 40f, 0f, 20f, 20f), "-", GUI.skin.button))
             {
                 CollapseWindow();
             }
@@ -329,7 +329,6 @@ namespace ModCrafting
 
         private string[] GetFilteredItemNames(ItemFilter filter)
         {
-
             List<string> filteredItemNames = new List<string>();
             List<ItemInfo> allInfos = LocalItemsManager.GetAllInfos().Values.ToList();
             List<ItemInfo> filteredInfos = new List<ItemInfo>();
@@ -454,9 +453,9 @@ namespace ModCrafting
                 if (filters != null)
                 {
                     int filtersCount = filters.Length;
-                    GUILayout.Label("Select filter:", GUI.skin.label);
+                    GUILayout.Label("Choose an item filter: ", GUI.skin.label);
                     SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
-                    if (GUILayout.Button($"Apply", GUI.skin.button))
+                    if (GUILayout.Button($"Apply filter", GUI.skin.button))
                     {
                         OnClickApplyFilterButton();
                     }
@@ -471,9 +470,10 @@ namespace ModCrafting
                 FilteredItemsScrollView();
                 using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
                 {
-                    GUILayout.Label("How many?: ", GUI.skin.label);
+                    ShouldAddToBackpackOption = GUILayout.Toggle(ShouldAddToBackpackOption, "Add to backpack?", GUI.skin.toggle);
+                    GUILayout.Label("Craft how many?: ", GUI.skin.label);
                     ItemCountToCraft = GUILayout.TextField(ItemCountToCraft, GUI.skin.textField, GUILayout.MaxWidth(50f));
-                    if (GUILayout.Button($"Craft selected", GUI.skin.button))
+                    if (GUILayout.Button($"Craft selected", GUI.skin.button, GUILayout.MaxWidth(200f)))
                     {
                         OnClickCraftSelectedItemButton();
                         CloseWindow();
@@ -494,7 +494,10 @@ namespace ModCrafting
 
         private void FilteredItemsScrollView()
         {
-            GUILayout.Label("Select item: ", GUI.skin.label);
+            GUI.color = Color.cyan;
+            GUILayout.Label($"Items filtered on: {SelectedFilter}", GUI.skin.label);
+            GUI.color = Color.white;
+            GUILayout.Label("Select item to craft: ", GUI.skin.label);
 
             FilteredItemsScrollViewPosition = GUILayout.BeginScrollView(FilteredItemsScrollViewPosition, GUI.skin.scrollView, GUILayout.MinHeight(300f));
             string[] filteredItemNames = GetFilteredItemNames(SelectedFilter);
@@ -512,6 +515,7 @@ namespace ModCrafting
                 if (string.IsNullOrEmpty(ItemCountToCraft) || int.TryParse(ItemCountToCraft, out int CountToCraft))
                 {
                     CountToCraft = 1;
+                    ItemCountToCraft = "1";
                 }
                 string[] filteredItemNames = GetFilteredItemNames(SelectedFilter);
                 SelectedItemToCraftItemName = filteredItemNames[SelectedItemToCraftIndex].Replace(" ", "_");
@@ -521,17 +525,25 @@ namespace ModCrafting
                 {
                     for (int i = 0; i < CountToCraft; i++)
                     {
-                        SelectedItemToCraft = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 2f, LocalPlayer.transform.rotation);
+                        if (ShouldAddToBackpackOption)
+                        {
+                            LocalPlayer.AddItemToInventory(SelectedItemToCraftItemID.ToString());
+                            SelectedItemToCraft = LocalInventoryBackpack.FindItem(SelectedItemToCraftItemID);
+                        }
+                        else
+                        {
+                            SelectedItemToCraft = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 1f, LocalPlayer.transform.rotation);
+                        }
+
                         if (SelectedItemToCraft != null)
                         {
                             CraftedItems.Add(SelectedItemToCraft);
-                            LocalPlayer.AddItemToInventory(SelectedItemToCraftItemID.ToString());
                         }
                     }
 
                     ShowHUDBigInfo(
                            HUDBigInfoMessage(
-                               ItemCraftedMessage(SelectedItemToCraft.m_Info.GetNameToDisplayLocalized(), CountToCraft)
+                               ItemCraftedMessage(LocalItemsManager.GetInfo(SelectedItemToCraftItemID).GetNameToDisplayLocalized(), CountToCraft)
                            )
                        );
                 }
@@ -742,10 +754,6 @@ namespace ModCrafting
         {
             if (SelectedItemToDestroy != null)
             {
-                if (SelectedItemToDestroy.m_Info.IsConstruction())
-                {
-                    SelectedItemToDestroy.TakeDamage(new DamageInfo { m_Damage = 100f, m_CriticalHit = true, m_DamageType = DamageType.Melee });
-                }
                 LocalItemsManager.AddItemToDestroy(SelectedItemToDestroy);
                 ShowHUDBigInfo(
                     HUDBigInfoMessage(
