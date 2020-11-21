@@ -18,32 +18,26 @@ namespace ModCrafting
         private static bool LocalOptionState { get; set; }
         private bool ShowUI = false;
 
-        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, ModScreenWidth, ModScreenHeight);
-
-        public static Vector2 FilteredItemsScrollViewPosition;
-
         private static ItemsManager LocalItemsManager;
-
         private static HUDManager LocalHUDManager;
-
         private static Player LocalPlayer;
-
         private static InventoryBackpack LocalInventoryBackpack;
 
+        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, ModScreenWidth, ModScreenHeight);
+        public static Vector2 FilteredItemsScrollViewPosition;
         public static string SelectedItemToCraftItemName;
         public static int SelectedItemToCraftIndex;
         public static ItemID SelectedItemToCraftItemID;
         public static Item SelectedItemToCraft;
         public static Item SelectedItemToDestroy;
+        public static string SelectedFilterName;
+        public static int SelectedFilterIndex;
+        public static ItemFilter SelectedFilter = ItemFilter.All;
 
         public static List<Item> CraftedItems = new List<Item>();
 
         public bool IsModActiveForMultiplayer { get; private set; }
         public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
-
-        public string SelectedFilterName { get; private set; }
-        public int SelectedFilterIndex { get; private set; }
-        public ItemFilter SelectedFilter { get; private set; } = ItemFilter.All;
 
         public static string ItemDestroyedMessage(string item) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{item} destroyed!</color>";
 
@@ -51,7 +45,7 @@ namespace ModCrafting
 
         public static string NoItemCraftedMessage() => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>Item could not be crafted!</color>";
 
-        public static string ItemCraftedMessage(string item, int count) => $"Crafted {count} x {item}";
+        public static string ItemCraftedMessage(string item, int count) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{count} x {item} crafted!</color>";
 
         public static string PermissionChangedMessage(string permission) => $"Permission to use mods and cheats in multiplayer was {permission}";
 
@@ -323,15 +317,13 @@ namespace ModCrafting
 
         private void CraftSelectedItemBox()
         {
-            ItemFilterBox();
-            ItemViewBox();
+            ItemsFilterBox();
+            ItemsScrollViewBox();
         }
 
         private string[] GetFilters()
         {
-            List<string> filters = new List<string>();
-            EnumUtils<ItemFilter>.ForeachName(filterName => filters.Add(filterName));
-            return filters.ToArray();
+            return Enum.GetNames(typeof(ItemFilter));
         }
 
         private string[] GetFilteredItems(ItemFilter filter)
@@ -372,9 +364,9 @@ namespace ModCrafting
             return filteredItemNames.ToArray();
         }
 
-        private void ItemFilterBox()
+        private void ItemsFilterBox()
         {
-            using (var contentScope = new GUILayout.VerticalScope(GUI.skin.box))
+            using (var filterScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
                 string[] filters = GetFilters();
                 if (filters != null)
@@ -391,9 +383,9 @@ namespace ModCrafting
             }
         }
 
-        private void ItemViewBox()
+        private void ItemsScrollViewBox()
         {
-            using (var itemsContentScope = new GUILayout.VerticalScope(GUI.skin.box))
+            using (var viewScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
                 GUILayout.Label("Select item: ", GUI.skin.label);
                 FilteredItemsScrollView();
