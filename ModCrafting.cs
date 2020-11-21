@@ -12,7 +12,7 @@ namespace ModCrafting
         private static ModCrafting Instance;
 
         private static readonly string ModName = nameof(ModCrafting);
-        private static readonly float ModScreenWidth = 750f;
+        private static readonly float ModScreenWidth = 850f;
         private static readonly float ModScreenHeight = 430f;
         private static bool IsMinimized { get; set; } = false;
         private static bool LocalOptionState { get; set; }
@@ -374,12 +374,11 @@ namespace ModCrafting
                 if (filters != null)
                 {
                     int filtersCount = filters.Length;
-                    GUILayout.Label("Select filter: ", GUI.skin.label);
+                    GUILayout.Label("Select filter:", GUI.skin.label);
                     SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
-                    if (GUILayout.Button($"Filter items", GUI.skin.button))
+                    if (GUILayout.Button($"Apply", GUI.skin.button))
                     {
-                        OnClickFilterItemsButton();
-                        CloseWindow();
+                        OnClickApplyFilterButton();
                     }
                 }
             }
@@ -399,13 +398,13 @@ namespace ModCrafting
             }
         }
 
-        private void OnClickFilterItemsButton()
+        private void OnClickApplyFilterButton()
         {
             string[] filters = GetFilters();
             if (filters != null)
             {
                 SelectedFilterName = filters[SelectedFilterIndex];
-                SelectedFilter = EnumUtils<ItemFilter>.GetValue(SelectedFilterName);
+                SelectedFilter = (ItemFilter)Enum.Parse(typeof(ItemFilter), SelectedFilterName);
             }
         }
 
