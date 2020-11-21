@@ -33,8 +33,8 @@ namespace ModCrafting
         public static string SelectedFilterName;
         public static int SelectedFilterIndex;
         public static ItemFilter SelectedFilter = ItemFilter.All;
-        public static string ItemCountToCraft;
-        public static bool ShouldAddToBackpackOption;
+        public static string ItemCountToCraft = "1";
+        public static bool ShouldAddToBackpackOption = true;
         public static List<Item> CraftedItems = new List<Item>();
 
         public bool IsModActiveForMultiplayer { get; private set; }
@@ -381,7 +381,6 @@ namespace ModCrafting
                 LocalItemsManager.GetInfo(ItemID.iron_ore_stone),
                 LocalItemsManager.GetInfo(ItemID.Rope),
                 LocalItemsManager.GetInfo(ItemID.Bone),
-                LocalItemsManager.GetInfo(ItemID.River_silt),
                 LocalItemsManager.GetInfo(ItemID.mud_to_build),
                 LocalItemsManager.GetInfo(ItemID.Dry_leaf),
                 LocalItemsManager.GetInfo(ItemID.Banana_Leaf),
@@ -389,7 +388,8 @@ namespace ModCrafting
                 LocalItemsManager.GetInfo(ItemID.Bird_feather),
                 LocalItemsManager.GetInfo(ItemID.Wood_Resin),
                 LocalItemsManager.GetInfo(ItemID.bag_lootable),
-                LocalItemsManager.GetInfo(ItemID.Bird_Nest_ToHoldHarvest),
+                LocalItemsManager.GetInfo(ItemID.Brazil_nut),
+                LocalItemsManager.GetInfo(ItemID.Coconut),
                 LocalItemsManager.GetInfo(ItemID.Campfire_ash),
                 LocalItemsManager.GetInfo(ItemID.Can_big),
                 LocalItemsManager.GetInfo(ItemID.Can_big_open),
@@ -402,8 +402,6 @@ namespace ModCrafting
                 LocalItemsManager.GetInfo(ItemID.Fish_Bone),
                 LocalItemsManager.GetInfo(ItemID.Molineria_leaf),
                 LocalItemsManager.GetInfo(ItemID.Small_leaf_pile),
-                LocalItemsManager.GetInfo(ItemID.storage_box),
-                LocalItemsManager.GetInfo(ItemID.Tapir_skull),
                 LocalItemsManager.GetInfo(ItemID.Tobacco_Leaf),
                 LocalItemsManager.GetInfo(ItemID.Turtle_shell)
             };
@@ -475,7 +473,7 @@ namespace ModCrafting
         {
             try
             {
-                if (string.IsNullOrEmpty(ItemCountToCraft) || int.TryParse(ItemCountToCraft, out int CountToCraft))
+                if (string.IsNullOrEmpty(ItemCountToCraft) || !int.TryParse(ItemCountToCraft, out int CountToCraft))
                 {
                     CountToCraft = 1;
                     ItemCountToCraft = "1";
