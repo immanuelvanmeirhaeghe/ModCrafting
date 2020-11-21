@@ -525,7 +525,7 @@ namespace ModCrafting
                         if (SelectedItemToCraft != null)
                         {
                             CraftedItems.Add(SelectedItemToCraft);
-                            LocalPlayer.AddItemToInventory(SelectedItemToCraft.GetName());
+                            LocalPlayer.AddItemToInventory(SelectedItemToCraftItemID.ToString());
                         }
                     }
 
