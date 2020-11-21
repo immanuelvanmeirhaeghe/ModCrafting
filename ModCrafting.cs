@@ -355,11 +355,13 @@ namespace ModCrafting
                     filteredInfos = allItemInfos;
                     break;
             }
-
-            foreach (ItemInfo filteredInfo in filteredInfos)
+            if (filteredInfos != null)
             {
-                string filteredItemName = filteredInfo.m_ID.ToString();
-                filteredItemNames.Add(filteredItemName.Replace("_", " "));
+                foreach (ItemInfo filteredInfo in filteredInfos)
+                {
+                    string filteredItemName = filteredInfo.m_ID.ToString();
+                    filteredItemNames.Add(filteredItemName.Replace("_", " "));
+                }
             }
             return filteredItemNames.ToArray();
         }
