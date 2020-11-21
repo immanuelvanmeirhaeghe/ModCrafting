@@ -33,6 +33,7 @@ namespace ModCrafting
         public static string SelectedFilterName;
         public static int SelectedFilterIndex;
         public static ItemFilter SelectedFilter = ItemFilter.All;
+        public static string ItemCountToCraft;
 
         public static List<Item> CraftedItems = new List<Item>();
 
@@ -224,7 +225,6 @@ namespace ModCrafting
             LocalItemsManager = ItemsManager.Get();
             LocalHUDManager = HUDManager.Get();
             LocalPlayer = Player.Get();
-
             LocalInventoryBackpack = InventoryBackpack.Get();
         }
 
@@ -323,36 +323,39 @@ namespace ModCrafting
 
         private string[] GetFilters()
         {
-            return Enum.GetNames(typeof(ItemFilter));
+            string[] filters = Enum.GetNames(typeof(ItemFilter));
+            return filters;
         }
 
-        private string[] GetFilteredItems(ItemFilter filter)
+        private string[] GetFilteredItemNames(ItemFilter filter)
         {
+
             List<string> filteredItemNames = new List<string>();
-            List<ItemInfo> allItemInfos = LocalItemsManager.GetAllInfos().Values.ToList();
-            List<ItemInfo> filteredInfos = default;
+            List<ItemInfo> allInfos = LocalItemsManager.GetAllInfos().Values.ToList();
+            List<ItemInfo> filteredInfos = new List<ItemInfo>();
             switch (filter)
             {
                 case ItemFilter.Resources:
-                    filteredInfos = allItemInfos.Where(info => info.IsStone() || info.IsSeed() || info.IsMeat() || info.IsFood() || info.IsConsumable() || info.IsDressing() || info.IsHeavyObject()
-                                                                                  || info.m_ID.IsLeaf() || info.m_ID.IsPlant() || info.m_ID.IsTree()
-                                                                                  || info.m_Item.IsFish() || info.m_Item.IsLiquidSource()).ToList();
+                    filteredInfos = GetResources();
+                    break;
+                case ItemFilter.Food:
+                    filteredInfos = allInfos.Where(info => info.IsSeed() || info.IsMeat() || info.IsFood() || info.IsConsumable()).ToList();
                     break;
                 case ItemFilter.Construction:
-                    filteredInfos = allItemInfos.Where(info => info.IsConstruction()).ToList();
+                    filteredInfos = allInfos.Where(info => info.IsConstruction()).ToList();
                     break;
                 case ItemFilter.Tools:
-                    filteredInfos = allItemInfos.Where(info => info.IsTool()).ToList();
+                    filteredInfos = allInfos.Where(info => info.IsTool()).ToList();
                     break;
                 case ItemFilter.Weapons:
-                    filteredInfos = allItemInfos.Where(info => info.IsWeapon()).ToList();
+                    filteredInfos = allInfos.Where(info => info.IsWeapon()).ToList();
                     break;
                 case ItemFilter.Armor:
-                    filteredInfos = allItemInfos.Where(info => info.IsArmor()).ToList();
+                    filteredInfos = allInfos.Where(info => info.IsArmor()).ToList();
                     break;
                 case ItemFilter.All:
                 default:
-                    filteredInfos = allItemInfos;
+                    filteredInfos = allInfos;
                     break;
             }
             if (filteredInfos != null)
@@ -365,6 +368,83 @@ namespace ModCrafting
             }
             return filteredItemNames.ToArray();
         }
+
+        private List<ItemInfo> GetResources() => new List<ItemInfo>
+            {
+                LocalItemsManager.GetInfo(ItemID.Log),
+                LocalItemsManager.GetInfo(ItemID.Bamboo_Log),
+                LocalItemsManager.GetInfo(ItemID.Long_Stick),
+                LocalItemsManager.GetInfo(ItemID.Bamboo_Long_Stick),
+                LocalItemsManager.GetInfo(ItemID.Stick),
+                LocalItemsManager.GetInfo(ItemID.Bamboo_Stick),
+                LocalItemsManager.GetInfo(ItemID.Small_Stick),
+                LocalItemsManager.GetInfo(ItemID.Stone),
+                LocalItemsManager.GetInfo(ItemID.Big_Stone),
+                LocalItemsManager.GetInfo(ItemID.Obsidian_Stone),
+                LocalItemsManager.GetInfo(ItemID.iron_ore_stone),
+                LocalItemsManager.GetInfo(ItemID.Rope),
+                LocalItemsManager.GetInfo(ItemID.Bone),
+                LocalItemsManager.GetInfo(ItemID.River_silt),
+                LocalItemsManager.GetInfo(ItemID.mud_to_build),
+                LocalItemsManager.GetInfo(ItemID.Dry_leaf),
+                LocalItemsManager.GetInfo(ItemID.Banana_Leaf),
+                LocalItemsManager.GetInfo(ItemID.Palm_Leaf),
+                LocalItemsManager.GetInfo(ItemID.Bird_feather),
+                LocalItemsManager.GetInfo(ItemID.Wood_Resin),
+                LocalItemsManager.GetInfo(ItemID.Toucan_Body),
+                LocalItemsManager.GetInfo(ItemID.AngelFish_Body),
+                LocalItemsManager.GetInfo(ItemID.ArmadilloThreeBanded_Body),
+                LocalItemsManager.GetInfo(ItemID.Arowana_Body),
+                LocalItemsManager.GetInfo(ItemID.bag_lootable),
+                LocalItemsManager.GetInfo(ItemID.Bird_Nest_ToHoldHarvest),
+                LocalItemsManager.GetInfo(ItemID.BrasilianWanderingSpider_Body),
+                LocalItemsManager.GetInfo(ItemID.Brazil_nut_whole),
+                LocalItemsManager.GetInfo(ItemID.CaimanLizard_Body),
+                LocalItemsManager.GetInfo(ItemID.Campfire_ash),
+                LocalItemsManager.GetInfo(ItemID.CaneToad_Body),
+                LocalItemsManager.GetInfo(ItemID.Can_big),
+                LocalItemsManager.GetInfo(ItemID.Can_big_open),
+                LocalItemsManager.GetInfo(ItemID.Can_small),
+                LocalItemsManager.GetInfo(ItemID.Can_small_open),
+                LocalItemsManager.GetInfo(ItemID.Charcoal),
+                LocalItemsManager.GetInfo(ItemID.Coconut),
+                LocalItemsManager.GetInfo(ItemID.coffee_instant),
+                LocalItemsManager.GetInfo(ItemID.Crab_Body),
+                LocalItemsManager.GetInfo(ItemID.DiscusFish_Body),
+                LocalItemsManager.GetInfo(ItemID.Dryed_Liane),
+                LocalItemsManager.GetInfo(ItemID.Fiber),
+                LocalItemsManager.GetInfo(ItemID.Ficus_leaf),
+                LocalItemsManager.GetInfo(ItemID.Fish_Bone),
+                LocalItemsManager.GetInfo(ItemID.GoliathBirdEater_Body),
+                LocalItemsManager.GetInfo(ItemID.Honeycomb),
+                LocalItemsManager.GetInfo(ItemID.Juice_Carton),
+                LocalItemsManager.GetInfo(ItemID.Larva),
+                LocalItemsManager.GetInfo(ItemID.lily_flower),
+                LocalItemsManager.GetInfo(ItemID.long_liana_attachment_1),
+                LocalItemsManager.GetInfo(ItemID.Maggot),
+                LocalItemsManager.GetInfo(ItemID.mattress_a),
+                LocalItemsManager.GetInfo(ItemID.military_bed_toUse),
+                LocalItemsManager.GetInfo(ItemID.Molineria_leaf),
+                LocalItemsManager.GetInfo(ItemID.Mouse_Body),
+                LocalItemsManager.GetInfo(ItemID.Painkillers),
+                LocalItemsManager.GetInfo(ItemID.ParrotMacaw_Body),
+                LocalItemsManager.GetInfo(ItemID.ParrotMacaw_yellow_Body),
+                LocalItemsManager.GetInfo(ItemID.PeacockBass_Body),
+                LocalItemsManager.GetInfo(ItemID.Piranha_Body),
+                LocalItemsManager.GetInfo(ItemID.PoisonDartFrog_Body),
+                LocalItemsManager.GetInfo(ItemID.PoisonDartFrog_Alive),
+                LocalItemsManager.GetInfo(ItemID.Pot),
+                LocalItemsManager.GetInfo(ItemID.Rubing_Wood),
+                LocalItemsManager.GetInfo(ItemID.Scorpion_Body),
+                LocalItemsManager.GetInfo(ItemID.Small_leaf_pile),
+                LocalItemsManager.GetInfo(ItemID.Snail_ToSpawnAndTake),
+                LocalItemsManager.GetInfo(ItemID.Stingray_Body),
+                LocalItemsManager.GetInfo(ItemID.storage_box),
+                LocalItemsManager.GetInfo(ItemID.Tapir_skull),
+                LocalItemsManager.GetInfo(ItemID.TeaBag),
+                LocalItemsManager.GetInfo(ItemID.Tobacco_Leaf),
+                LocalItemsManager.GetInfo(ItemID.Turtle_shell)
+            };
 
         private void ItemsFilterBox()
         {
@@ -388,12 +468,16 @@ namespace ModCrafting
         {
             using (var viewScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
-                GUILayout.Label("Select item: ", GUI.skin.label);
                 FilteredItemsScrollView();
-                if (GUILayout.Button($"Craft selected", GUI.skin.button))
+                using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
                 {
-                    OnClickCraftSelectedItemButton();
-                    CloseWindow();
+                    GUILayout.Label("How many?: ", GUI.skin.label);
+                    ItemCountToCraft = GUILayout.TextField(ItemCountToCraft, GUI.skin.textField, GUILayout.MaxWidth(50f));
+                    if (GUILayout.Button($"Craft selected", GUI.skin.button))
+                    {
+                        OnClickCraftSelectedItemButton();
+                        CloseWindow();
+                    }
                 }
             }
         }
@@ -410,8 +494,10 @@ namespace ModCrafting
 
         private void FilteredItemsScrollView()
         {
+            GUILayout.Label("Select item: ", GUI.skin.label);
+
             FilteredItemsScrollViewPosition = GUILayout.BeginScrollView(FilteredItemsScrollViewPosition, GUI.skin.scrollView, GUILayout.MinHeight(300f));
-            string[] filteredItemNames = GetFilteredItems(SelectedFilter);
+            string[] filteredItemNames = GetFilteredItemNames(SelectedFilter);
             if (filteredItemNames != null)
             {
                 SelectedItemToCraftIndex = GUILayout.SelectionGrid(SelectedItemToCraftIndex, filteredItemNames, 3, GUI.skin.button);
@@ -423,30 +509,39 @@ namespace ModCrafting
         {
             try
             {
-                string[] filteredItemNames = GetFilteredItems(SelectedFilter);
+                if (string.IsNullOrEmpty(ItemCountToCraft) || int.TryParse(ItemCountToCraft, out int CountToCraft))
+                {
+                    CountToCraft = 1;
+                }
+                string[] filteredItemNames = GetFilteredItemNames(SelectedFilter);
                 SelectedItemToCraftItemName = filteredItemNames[SelectedItemToCraftIndex].Replace(" ", "_");
-                SelectedItemToCraftItemID = EnumUtils<ItemID>.GetValue(SelectedItemToCraftItemName);
+                SelectedItemToCraftItemID = (ItemID)Enum.Parse(typeof(ItemID), SelectedItemToCraftItemName);
                 GameObject prefab = GreenHellGame.Instance.GetPrefab(SelectedItemToCraftItemName);
                 if (prefab != null)
                 {
-                    SelectedItemToCraft = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 2f, LocalPlayer.transform.rotation);
-                    if (SelectedItemToCraft != null)
+                    for (int i = 0; i < CountToCraft; i++)
                     {
-                        CraftedItems.Add(SelectedItemToCraft);
-                        ShowHUDBigInfo(
-                            HUDBigInfoMessage(
-                                ItemCraftedMessage(SelectedItemToCraft.m_Info.GetNameToDisplayLocalized(), 1)
-                            )
-                        );
+                        SelectedItemToCraft = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 2f, LocalPlayer.transform.rotation);
+                        if (SelectedItemToCraft != null)
+                        {
+                            CraftedItems.Add(SelectedItemToCraft);
+                            LocalPlayer.AddItemToInventory(SelectedItemToCraft.GetName());
+                        }
                     }
-                    else
-                    {
-                        ShowHUDBigInfo(
-                            HUDBigInfoMessage(
-                                NoItemCraftedMessage()
-                            )
-                        );
-                    }
+
+                    ShowHUDBigInfo(
+                           HUDBigInfoMessage(
+                               ItemCraftedMessage(SelectedItemToCraft.m_Info.GetNameToDisplayLocalized(), CountToCraft)
+                           )
+                       );
+                }
+                else
+                {
+                    ShowHUDBigInfo(
+                        HUDBigInfoMessage(
+                            NoItemCraftedMessage()
+                        )
+                    );
                 }
             }
             catch (Exception exc)

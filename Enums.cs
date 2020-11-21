@@ -10,6 +10,7 @@ namespace ModCrafting.Enums
     {
         All,
         Resources,
+        Food,
         Construction,
         Tools,
         Weapons,
