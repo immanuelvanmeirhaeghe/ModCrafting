@@ -8,6 +8,7 @@
         Construction,
         Tools,
         Weapons,
-        Armor
+        Armor,
+        Unique
     }
 }

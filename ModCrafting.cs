@@ -13,7 +13,7 @@ namespace ModCrafting
 
         private static readonly string ModName = nameof(ModCrafting);
         private static readonly float ModScreenWidth = 850f;
-        private static readonly float ModScreenHeight = 500f;
+        private static readonly float ModScreenMaxHeight = 500f;
         private static bool IsMinimized { get; set; } = false;
 
         private bool ShowUI = false;
@@ -23,7 +23,7 @@ namespace ModCrafting
         private static Player LocalPlayer;
         private static InventoryBackpack LocalInventoryBackpack;
 
-        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, ModScreenWidth, ModScreenHeight);
+        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, ModScreenWidth, ModScreenMaxHeight);
         public static Vector2 FilteredItemsScrollViewPosition;
         public static string SelectedItemToCraftItemName;
         public static int SelectedItemToCraftIndex;
@@ -252,7 +252,7 @@ namespace ModCrafting
 
         private void InitModCraftingScreen(int windowID)
         {
-            using (var verticalScope = new GUILayout.VerticalScope(GUI.skin.box))
+            using (var verticalScope = new GUILayout.VerticalScope(GUI.skin.box, GUILayout.ExpandHeight(true)))
             {
                 ScreenMenuBox();
                 DestroyItemsBox();
@@ -297,12 +297,12 @@ namespace ModCrafting
         {
             if (!IsMinimized)
             {
-                ModCraftingScreen.Set(ModCraftingScreen.x, ModCraftingScreen.y, ModScreenWidth, 30f);
+                ModCraftingScreen = new Rect(ModCraftingScreen.x, ModCraftingScreen.y, ModCraftingScreen.width, 30f);
                 IsMinimized = true;
             }
             else
             {
-                ModCraftingScreen.Set(ModCraftingScreen.x, ModCraftingScreen.y, ModScreenWidth, ModScreenHeight);
+                ModCraftingScreen = new Rect(ModCraftingScreen.x, ModCraftingScreen.y, ModCraftingScreen.width, ModScreenMaxHeight);
                 IsMinimized = false;
             }
         }
@@ -332,6 +332,9 @@ namespace ModCrafting
             List<ItemInfo> filteredInfos = new List<ItemInfo>();
             switch (filter)
             {
+                case ItemFilter.Unique:
+                    filteredInfos = GetUnique(allInfos);
+                    break;
                 case ItemFilter.Resources:
                     filteredInfos = GetResources();
                     break;
@@ -366,6 +369,40 @@ namespace ModCrafting
             return filteredItemNames.OrderBy(itemName => itemName).ToArray();
         }
 
+        private List<ItemInfo> GetUnique(List<ItemInfo> allInfos)
+        {
+            List<ItemInfo> uniques = new List<ItemInfo>();
+
+            uniques = allInfos.Where(info => info.m_ID.IsQuestItem() || info.IsReadableItem()).ToList();
+            List<ItemID> uids = new List<ItemID>
+            {
+                ItemID.Pot,
+                ItemID.Bidon,
+                ItemID.Wooden_Spoon,
+                ItemID.GrapplingHook,
+                ItemID.grappling_hook_gun,
+                ItemID.Grappling_Hook,
+                ItemID.grappling_hook_gun_Survi,
+                ItemID.Grappling_Hook_Survi,
+                ItemID.Machete,
+                ItemID.Radio,
+                ItemID.william_ball,
+                ItemID.Rusted_Axe,
+                ItemID.Rusted_Machete,
+                ItemID.moneybag
+            };
+            foreach (ItemID iD in uids)
+            {
+                ItemInfo info = LocalItemsManager.GetInfo(iD);
+                if (!uniques.Contains(info))
+                {
+                    uniques.Add(info);
+                }
+            }
+
+            return uniques;
+        }
+
         private List<ItemInfo> GetResources() => new List<ItemInfo>
             {
                 LocalItemsManager.GetInfo(ItemID.Log),
@@ -386,10 +423,8 @@ namespace ModCrafting
                 LocalItemsManager.GetInfo(ItemID.Banana_Leaf),
                 LocalItemsManager.GetInfo(ItemID.Palm_Leaf),
                 LocalItemsManager.GetInfo(ItemID.Bird_feather),
+                LocalItemsManager.GetInfo(ItemID.Bird_Nest),
                 LocalItemsManager.GetInfo(ItemID.Wood_Resin),
-                LocalItemsManager.GetInfo(ItemID.bag_lootable),
-                LocalItemsManager.GetInfo(ItemID.Brazil_nut),
-                LocalItemsManager.GetInfo(ItemID.Coconut),
                 LocalItemsManager.GetInfo(ItemID.Campfire_ash),
                 LocalItemsManager.GetInfo(ItemID.Can_big),
                 LocalItemsManager.GetInfo(ItemID.Can_big_open),
@@ -532,7 +567,7 @@ namespace ModCrafting
         {
             if (SelectedItemToDestroy != null)
             {
-               DestroyItem(SelectedItemToDestroy, false);
+                DestroyItem(SelectedItemToDestroy, false);
                 ShowHUDBigInfo(
                     HUDBigInfoMessage(
                         ItemDestroyedMessage(
