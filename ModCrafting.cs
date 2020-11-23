@@ -195,7 +195,7 @@ namespace ModCrafting
             ShowUI = !ShowUI;
         }
 
-        private void DestroyItem(Item itemTodestroy = null, bool allCrafted = false)
+        private void DestroyItem(Item itemTodestroy = null)
         {
             try
             {
@@ -203,12 +203,11 @@ namespace ModCrafting
                 {
                     LocalItemsManager.AddItemToDestroy(itemTodestroy);
                 }
-
-                if (allCrafted)
+                else
                 {
                     if (CraftedItems != null)
                     {
-                        foreach (Item craftedItem in CraftedItems)
+                        foreach (Item craftedItem in GetCraftedItems(SelectedFilter))
                         {
                             LocalItemsManager.AddItemToDestroy(craftedItem);
                         }
@@ -267,10 +266,10 @@ namespace ModCrafting
         {
             using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                GUILayout.Label("Click to destroy all items that were crafted using this mod.", GUI.skin.label);
-                if (GUILayout.Button("Destroy all", GUI.skin.button, GUILayout.MaxWidth(200f)))
+                GUILayout.Label($"Click to destroy {SelectedFilter} items that were crafted using this mod.", GUI.skin.label);
+                if (GUILayout.Button("Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
                 {
-                    DestroyItem(null, true);
+                    DestroyItem(null);
                     ShowHUDBigInfo(
                        HUDBigInfoMessage(
                            ItemDestroyedMessage(
@@ -369,6 +368,50 @@ namespace ModCrafting
                 }
             }
             return filteredItemNames.OrderBy(itemName => itemName).ToArray();
+        }
+
+        private List<Item> GetCraftedItems(ItemFilter filter)
+        {
+            List<Item> filteredItems = new List<Item>();
+            List<ItemInfo> allInfos = LocalItemsManager.GetAllInfos().Values.ToList();
+            List<ItemInfo> filteredInfos = new List<ItemInfo>();
+            switch (filter)
+            {
+                case ItemFilter.Unique:
+                    filteredInfos = GetUnique(allInfos);
+                    break;
+                case ItemFilter.Resources:
+                    filteredInfos = GetResources();
+                    break;
+                case ItemFilter.Food:
+                    filteredInfos = allInfos.Where(info => info.IsSeed() || info.IsMeat() || info.IsFood() || info.IsConsumable()).ToList();
+                    break;
+                case ItemFilter.Construction:
+                    filteredInfos = allInfos.Where(info => info.IsConstruction()).ToList();
+                    break;
+                case ItemFilter.Tools:
+                    filteredInfos = allInfos.Where(info => info.IsTool()).ToList();
+                    break;
+                case ItemFilter.Weapons:
+                    filteredInfos = allInfos.Where(info => info.IsWeapon()).ToList();
+                    break;
+                case ItemFilter.Armor:
+                    filteredInfos = allInfos.Where(info => info.IsArmor()).ToList();
+                    break;
+                case ItemFilter.All:
+                default:
+                    filteredInfos = allInfos;
+                    break;
+            }
+            if (filteredInfos != null)
+            {
+                foreach (ItemInfo filteredInfo in filteredInfos)
+                {
+                    Item filteredItem = CraftedItems.Find(item => item.m_Info == filteredInfo);
+                    filteredItems.Add(filteredItem);
+                }
+            }
+            return filteredItems;
         }
 
         private List<ItemInfo> GetUnique(List<ItemInfo> allInfos)
@@ -538,17 +581,12 @@ namespace ModCrafting
                 ItemCountToCraft = "1";
             }
 
-            GameObject prefab;
             if (SelectedFilter == ItemFilter.Construction)
             {
                 CountToCraft = 1;
                 ShouldAddToBackpackOption = false;
-                prefab = GreenHellGame.Instance.GetPrefab($"{itemID}Ghost");
             }
-            else
-            {
-                prefab = GreenHellGame.Instance.GetPrefab($"{itemID}");
-            }
+            GameObject prefab = GreenHellGame.Instance.GetPrefab($"{itemID}");
 
             if (prefab != null)
             {
@@ -595,7 +633,7 @@ namespace ModCrafting
         {
             if (SelectedItemToDestroy != null)
             {
-                DestroyItem(SelectedItemToDestroy, false);
+                DestroyItem(SelectedItemToDestroy);
                 ShowHUDBigInfo(
                     HUDBigInfoMessage(
                         ItemDestroyedMessage(
