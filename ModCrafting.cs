@@ -19,6 +19,7 @@ namespace ModCrafting
         private bool ShowUI = false;
 
         private static ItemsManager LocalItemsManager;
+        private static ConstructionController LocalConstructionController;
         private static HUDManager LocalHUDManager;
         private static Player LocalPlayer;
         private static InventoryBackpack LocalInventoryBackpack;
@@ -240,6 +241,7 @@ namespace ModCrafting
         private void InitData()
         {
             LocalItemsManager = ItemsManager.Get();
+            LocalConstructionController = ConstructionController.Get();
             LocalHUDManager = HUDManager.Get();
             LocalPlayer = Player.Get();
             LocalInventoryBackpack = InventoryBackpack.Get();
@@ -449,7 +451,9 @@ namespace ModCrafting
                 if (filters != null)
                 {
                     int filtersCount = filters.Length;
+                    GUI.color = Color.cyan;
                     GUILayout.Label("Choose an item filter: ", GUI.skin.label);
+                    GUI.color = Color.white;
                     SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
                     if (GUILayout.Button($"Apply filter", GUI.skin.button))
                     {
@@ -508,53 +512,77 @@ namespace ModCrafting
         {
             try
             {
-                if (string.IsNullOrEmpty(ItemCountToCraft) || !int.TryParse(ItemCountToCraft, out int CountToCraft))
-                {
-                    CountToCraft = 1;
-                    ItemCountToCraft = "1";
-                }
                 string[] filteredItemNames = GetFilteredItemNames(SelectedFilter);
-                SelectedItemToCraftItemName = filteredItemNames[SelectedItemToCraftIndex].Replace(" ", "_");
-                SelectedItemToCraftItemID = (ItemID)Enum.Parse(typeof(ItemID), SelectedItemToCraftItemName);
-                GameObject prefab = GreenHellGame.Instance.GetPrefab(SelectedItemToCraftItemName);
-                if (prefab != null)
+                if (filteredItemNames != null)
                 {
-                    for (int i = 0; i < CountToCraft; i++)
+                    SelectedItemToCraftItemName = filteredItemNames[SelectedItemToCraftIndex].Replace(" ", "_");
+                    if (!string.IsNullOrEmpty(SelectedItemToCraftItemName))
                     {
-                        if (ShouldAddToBackpackOption)
-                        {
-                            LocalPlayer.AddItemToInventory(SelectedItemToCraftItemID.ToString());
-                            SelectedItemToCraft = LocalInventoryBackpack.FindItem(SelectedItemToCraftItemID);
-                        }
-                        else
-                        {
-                            SelectedItemToCraft = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 1f, LocalPlayer.transform.rotation);
-                        }
-
-                        if (SelectedItemToCraft != null)
-                        {
-                            CraftedItems.Add(SelectedItemToCraft);
-                        }
+                        SelectedItemToCraftItemID = (ItemID)Enum.Parse(typeof(ItemID), SelectedItemToCraftItemName);
+                        CraftSelectedItem(SelectedItemToCraftItemID);
                     }
+                }
 
-                    ShowHUDBigInfo(
-                           HUDBigInfoMessage(
-                               ItemCraftedMessage(LocalItemsManager.GetInfo(SelectedItemToCraftItemID).GetNameToDisplayLocalized(), CountToCraft)
-                           )
-                       );
-                }
-                else
-                {
-                    ShowHUDBigInfo(
-                        HUDBigInfoMessage(
-                            NoItemCraftedMessage()
-                        )
-                    );
-                }
             }
             catch (Exception exc)
             {
                 ModAPI.Log.Write($"[{ModName}:{nameof(OnClickCraftSelectedItemButton)}] throws exception:\n{exc.Message}");
+            }
+        }
+
+        private void CraftSelectedItem(ItemID itemID)
+        {
+            if (string.IsNullOrEmpty(ItemCountToCraft) || !int.TryParse(ItemCountToCraft, out int CountToCraft))
+            {
+                CountToCraft = 1;
+                ItemCountToCraft = "1";
+            }
+
+            GameObject prefab;
+            if (SelectedFilter == ItemFilter.Construction)
+            {
+                CountToCraft = 1;
+                ShouldAddToBackpackOption = false;
+                prefab = GreenHellGame.Instance.GetPrefab($"{itemID}Ghost");
+            }
+            else
+            {
+                prefab = GreenHellGame.Instance.GetPrefab($"{itemID}");
+            }
+
+            if (prefab != null)
+            {
+                for (int i = 0; i < CountToCraft; i++)
+                {
+                    if (ShouldAddToBackpackOption)
+                    {
+                        LocalPlayer.AddItemToInventory(SelectedItemToCraftItemID.ToString());
+                        SelectedItemToCraft = LocalInventoryBackpack.FindItem(SelectedItemToCraftItemID);
+                    }
+                    else
+                    {
+                        SelectedItemToCraft = CreateItem(prefab, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 1f, LocalPlayer.transform.rotation);
+                    }
+
+                    if (SelectedItemToCraft != null)
+                    {
+                        CraftedItems.Add(SelectedItemToCraft);
+                    }
+                }
+
+                ShowHUDBigInfo(
+                       HUDBigInfoMessage(
+                           ItemCraftedMessage(LocalItemsManager.GetInfo(SelectedItemToCraftItemID).GetNameToDisplayLocalized(), CountToCraft)
+                       )
+                   );
+            }
+            else
+            {
+                ShowHUDBigInfo(
+                    HUDBigInfoMessage(
+                        NoItemCraftedMessage()
+                    )
+                );
             }
         }
 
