@@ -30,7 +30,7 @@ namespace ModCrafting
         public static int SelectedItemToCraftIndex;
         public static ItemID SelectedItemToCraftItemID;
         public static Item SelectedItemToCraft;
-        public static Item SelectedItemToDestroy;
+        public static GameObject SelectedObjectToDestroy;
         public static string SelectedFilterName;
         public static int SelectedFilterIndex;
         public static ItemFilter SelectedFilter = ItemFilter.All;
@@ -157,17 +157,8 @@ namespace ModCrafting
                         GameObject go = hitInfo.collider.transform.gameObject;
                         if (go != null)
                         {
-                            Item item = go.GetComponent<Item>();
-                            if (item != null)
-                            {
-                                if (!item.IsPlayer() && !item.IsAI() && !item.IsHumanAI())
-                                {
-                                    EnableCursor(true);
-                                    SelectedItemToDestroy = item;
-                                    ShowConfirmDestroyDialog();
-                                    EnableCursor(false);
-                                }
-                            }
+                            SelectedObjectToDestroy = go;
+                            ShowConfirmDestroyDialog();
                         }
                     }
                 }
@@ -184,9 +175,10 @@ namespace ModCrafting
 
         private void ShowConfirmDestroyDialog()
         {
-            string description = SelectedItemToDestroy != null ? SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized() : $"{SelectedFilter} items that were crafted using this mod";
+            EnableCursor(true);
+            string description = SelectedObjectToDestroy != null ? SelectedObjectToDestroy.gameObject.name : $"{SelectedFilter} items that were crafted using this mod";
             YesNoDialog destroyYesNo = GreenHellGame.GetYesNoDialog();
-            destroyYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy {description}?", false);
+            destroyYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy {description}?", true);
         }
 
         public static string OnlyForSinglePlayerOrHostMessage()
@@ -201,33 +193,34 @@ namespace ModCrafting
         {
             try
             {
-                if (SelectedItemToDestroy != null)
+                if (SelectedObjectToDestroy != null)
                 {
-                    LocalItemsManager.AddItemToDestroy(SelectedItemToDestroy);
-                    ShowHUDBigInfo(
-                        HUDBigInfoMessage(
-                            ItemDestroyedMessage(
-                                SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()
-                            )
-                        )
-                    );
+                    Item toDestroy = SelectedObjectToDestroy.GetComponent<Item>();
+                    if (toDestroy != null)
+                    {
+                        if (!toDestroy.IsPlayer() && !toDestroy.IsAI() && !toDestroy.IsHumanAI())
+                        {
+                            LocalItemsManager.AddItemToDestroy(toDestroy);
+                        }
+                    }
+                    else
+                    {
+                        Destroy(SelectedObjectToDestroy.gameObject);
+                    }
                 }
                 else
                 {
                     if (CraftedItems != null)
                     {
-                        foreach (Item craftedItem in GetCraftedItems(SelectedFilter))
+                        List<Item> toDestroy = GetCraftedItems(SelectedFilter);
+                        if (toDestroy != null)
                         {
-                            LocalItemsManager.AddItemToDestroy(craftedItem);
+                            foreach (Item craftedItem in toDestroy)
+                            {
+                                LocalItemsManager.AddItemToDestroy(craftedItem);
+                            }
+                            toDestroy.Clear();
                         }
-                        CraftedItems.Clear();
-                        ShowHUDBigInfo(
-                            HUDBigInfoMessage(
-                                ItemDestroyedMessage(
-                                    $"{SelectedFilter} items that were crafted using this mod"
-                                )
-                            )
-                        );
                     }
                 }
             }
@@ -282,7 +275,7 @@ namespace ModCrafting
         {
             using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                GUILayout.Label($"Choose a filter, then click to destroy {SelectedFilter} items that were crafted using this mod.", GUI.skin.label);
+                GUILayout.Label($"Choose a filter, then click to destroy {SelectedFilter.ToString().ToLower()} items that were crafted using this mod.", GUI.skin.label);
                 if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
                 {
                     ShowConfirmDestroyDialog();
@@ -343,7 +336,7 @@ namespace ModCrafting
             switch (filter)
             {
                 case ItemFilter.Unique:
-                    filteredInfos = GetUnique(allInfos);
+                    filteredInfos = GetUnique();
                     break;
                 case ItemFilter.Resources:
                     filteredInfos = GetResources();
@@ -381,53 +374,42 @@ namespace ModCrafting
 
         private List<Item> GetCraftedItems(ItemFilter filter)
         {
-            List<Item> filteredItems = new List<Item>();
-            List<ItemInfo> allInfos = LocalItemsManager.GetAllInfos().Values.ToList();
-            List<ItemInfo> filteredInfos = new List<ItemInfo>();
+            List<Item> filteredItems;
             switch (filter)
             {
                 case ItemFilter.Unique:
-                    filteredInfos = GetUnique(allInfos);
+                    filteredItems = CraftedItems.Where(craftedItem => GetUnique().Contains(craftedItem.m_Info)).ToList();
                     break;
                 case ItemFilter.Resources:
-                    filteredInfos = GetResources();
+                    filteredItems = CraftedItems.Where(craftedItem => GetResources().Contains(craftedItem.m_Info)).ToList();
                     break;
                 case ItemFilter.Food:
-                    filteredInfos = allInfos.Where(info => info.IsSeed() || info.IsMeat() || info.IsFood() || info.IsConsumable()).ToList();
+                    filteredItems = CraftedItems.Where(craftedItem => craftedItem.m_Info.IsSeed() || craftedItem.m_Info.IsMeat() || craftedItem.m_Info.IsFood() || craftedItem.m_Info.IsConsumable()).ToList();
                     break;
                 case ItemFilter.Construction:
-                    filteredInfos = allInfos.Where(info => info.IsConstruction()).ToList();
+                    filteredItems = CraftedItems.Where(craftedItem => craftedItem.m_Info.IsConstruction()).ToList();
                     break;
                 case ItemFilter.Tools:
-                    filteredInfos = allInfos.Where(info => info.IsTool()).ToList();
+                    filteredItems = CraftedItems.Where(craftedItem => craftedItem.m_Info.IsTool()).ToList();
                     break;
                 case ItemFilter.Weapons:
-                    filteredInfos = allInfos.Where(info => info.IsWeapon()).ToList();
+                    filteredItems = CraftedItems.Where(craftedItem => craftedItem.m_Info.IsWeapon()).ToList();
                     break;
                 case ItemFilter.Armor:
-                    filteredInfos = allInfos.Where(info => info.IsArmor()).ToList();
+                    filteredItems = CraftedItems.Where(craftedItem => craftedItem.m_Info.IsArmor()).ToList();
                     break;
                 case ItemFilter.All:
                 default:
-                    filteredInfos = allInfos;
+                    filteredItems = CraftedItems;
                     break;
-            }
-            if (filteredInfos != null)
-            {
-                foreach (ItemInfo filteredInfo in filteredInfos)
-                {
-                    Item filteredItem = CraftedItems.Find(item => item.m_Info == filteredInfo);
-                    filteredItems.Add(filteredItem);
-                }
             }
             return filteredItems;
         }
 
-        private List<ItemInfo> GetUnique(List<ItemInfo> allInfos)
+        private List<ItemInfo> GetUnique()
         {
-            List<ItemInfo> uniques = new List<ItemInfo>();
-
-            uniques = allInfos.Where(info => info.m_ID.IsQuestItem() || info.IsReadableItem()).ToList();
+            List<ItemInfo> allInfos = LocalItemsManager.GetAllInfos().Values.ToList();
+            List<ItemInfo> uniques = allInfos.Where(info => info.m_ID.IsQuestItem() || info.IsReadableItem()).ToList();
             List<ItemID> uids = new List<ItemID>
             {
                 ItemID.Pot,
@@ -453,7 +435,6 @@ namespace ModCrafting
                     uniques.Add(info);
                 }
             }
-
             return uniques;
         }
 
@@ -574,7 +555,6 @@ namespace ModCrafting
                         CraftSelectedItem(SelectedItemToCraftItemID);
                     }
                 }
-
             }
             catch (Exception exc)
             {
@@ -593,10 +573,11 @@ namespace ModCrafting
             if (SelectedFilter == ItemFilter.Construction)
             {
                 CountToCraft = 1;
+                ItemCountToCraft = "1";
                 ShouldAddToBackpackOption = false;
             }
-            GameObject prefab = GreenHellGame.Instance.GetPrefab($"{itemID}");
 
+            GameObject prefab = GreenHellGame.Instance.GetPrefab($"{itemID}");
             if (prefab != null)
             {
                 for (int i = 0; i < CountToCraft; i++)
@@ -621,7 +602,7 @@ namespace ModCrafting
                        HUDBigInfoMessage(
                            ItemCraftedMessage(LocalItemsManager.GetInfo(SelectedItemToCraftItemID).GetNameToDisplayLocalized(), CountToCraft)
                        )
-                   );
+                );
             }
             else
             {
@@ -640,12 +621,24 @@ namespace ModCrafting
 
         public void OnYesFromDialog()
         {
+            string destroyed = SelectedObjectToDestroy != null ? SelectedObjectToDestroy.gameObject.name : $"{SelectedFilter} items that were crafted using this mod";
+
             DestroySelectedItem();
+
+            ShowHUDBigInfo(
+                HUDBigInfoMessage(
+                    ItemDestroyedMessage(
+                        $"{destroyed}"
+                    )
+                )
+            );
+            EnableCursor(false);
         }
 
         public void OnNoFromDialog()
         {
-            SelectedItemToDestroy = null;
+            SelectedObjectToDestroy = null;
+            EnableCursor(false);
         }
 
         public void OnOkFromDialog()
@@ -655,7 +648,7 @@ namespace ModCrafting
 
         public void OnCloseDialog()
         {
-
+            EnableCursor(false);
         }
     }
 }
