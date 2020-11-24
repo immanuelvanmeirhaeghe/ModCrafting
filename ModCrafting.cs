@@ -163,7 +163,7 @@ namespace ModCrafting
                                 if (!item.IsPlayer() && !item.IsAI() && !item.IsHumanAI())
                                 {
                                     SelectedItemToDestroy = item;
-                                    ShowConfirmDestroyDialog(item);
+                                    ShowConfirmDestroyDialog();
                                 }
                             }
                         }
@@ -180,11 +180,10 @@ namespace ModCrafting
             }
         }
 
-        private void ShowConfirmDestroyDialog(Item item)
+        private void ShowConfirmDestroyDialog()
         {
-            EnableCursor(true);
             YesNoDialog deleteYesNo = GreenHellGame.GetYesNoDialog();
-            deleteYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy {item.m_Info.GetNameToDisplayLocalized()}?", false);
+            deleteYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy?", false);
         }
 
         public static string OnlyForSinglePlayerOrHostMessage()
@@ -195,13 +194,20 @@ namespace ModCrafting
             ShowUI = !ShowUI;
         }
 
-        private void DestroyItem(Item itemTodestroy = null)
+        private void DestroySelectedItem()
         {
             try
             {
-                if (itemTodestroy != null)
+                if (SelectedItemToDestroy != null)
                 {
-                    LocalItemsManager.AddItemToDestroy(itemTodestroy);
+                    LocalItemsManager.AddItemToDestroy(SelectedItemToDestroy);
+                    ShowHUDBigInfo(
+                        HUDBigInfoMessage(
+                            ItemDestroyedMessage(
+                                SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()
+                            )
+                        )
+                    );
                 }
                 else
                 {
@@ -212,12 +218,19 @@ namespace ModCrafting
                             LocalItemsManager.AddItemToDestroy(craftedItem);
                         }
                         CraftedItems.Clear();
+                        ShowHUDBigInfo(
+                            HUDBigInfoMessage(
+                                ItemDestroyedMessage(
+                                    $"{SelectedFilter} items that were crafted using this mod"
+                                )
+                            )
+                        );
                     }
                 }
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}:{nameof(DestroyItem)}] throws exception:\n{exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(DestroySelectedItem)}] throws exception:\n{exc.Message}");
             }
         }
 
@@ -266,17 +279,9 @@ namespace ModCrafting
         {
             using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                GUILayout.Label($"Click to destroy {SelectedFilter} items that were crafted using this mod.", GUI.skin.label);
-                if (GUILayout.Button("Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
+                if (GUILayout.Button($"Destroy {SelectedFilter} items", GUI.skin.button, GUILayout.MaxWidth(200f)))
                 {
-                    DestroyItem(null);
-                    ShowHUDBigInfo(
-                       HUDBigInfoMessage(
-                           ItemDestroyedMessage(
-                               "All items that were crafted using this mod"
-                           )
-                       )
-                   );
+                    ShowConfirmDestroyDialog();
                 }
             }
         }
@@ -631,32 +636,12 @@ namespace ModCrafting
 
         public void OnYesFromDialog()
         {
-            if (SelectedItemToDestroy != null)
-            {
-                DestroyItem(SelectedItemToDestroy);
-                ShowHUDBigInfo(
-                    HUDBigInfoMessage(
-                        ItemDestroyedMessage(
-                            SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()
-                        )
-                    )
-                );
-            }
-            else
-            {
-                ShowHUDBigInfo(
-                   HUDBigInfoMessage(
-                       NoItemSelectedMessage()
-                   )
-                );
-            }
-            EnableCursor(false);
+            DestroySelectedItem();
         }
 
         public void OnNoFromDialog()
         {
             SelectedItemToDestroy = null;
-            EnableCursor(false);
         }
 
         public void OnOkFromDialog()
@@ -666,7 +651,7 @@ namespace ModCrafting
 
         public void OnCloseDialog()
         {
-            EnableCursor(false);
+
         }
     }
 }
