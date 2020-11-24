@@ -162,8 +162,10 @@ namespace ModCrafting
                             {
                                 if (!item.IsPlayer() && !item.IsAI() && !item.IsHumanAI())
                                 {
+                                    EnableCursor(true);
                                     SelectedItemToDestroy = item;
                                     ShowConfirmDestroyDialog();
+                                    EnableCursor(false);
                                 }
                             }
                         }
@@ -182,8 +184,9 @@ namespace ModCrafting
 
         private void ShowConfirmDestroyDialog()
         {
-            YesNoDialog deleteYesNo = GreenHellGame.GetYesNoDialog();
-            deleteYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy?", false);
+            string description = SelectedItemToDestroy != null ? SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized() : $"{SelectedFilter} items that were crafted using this mod";
+            YesNoDialog destroyYesNo = GreenHellGame.GetYesNoDialog();
+            destroyYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy {description}?", false);
         }
 
         public static string OnlyForSinglePlayerOrHostMessage()
@@ -279,7 +282,8 @@ namespace ModCrafting
         {
             using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                if (GUILayout.Button($"Destroy {SelectedFilter} items", GUI.skin.button, GUILayout.MaxWidth(200f)))
+                GUILayout.Label($"Choose a filter, then click to destroy {SelectedFilter} items that were crafted using this mod.", GUI.skin.label);
+                if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
                 {
                     ShowConfirmDestroyDialog();
                 }
