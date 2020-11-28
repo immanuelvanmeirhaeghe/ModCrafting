@@ -7,13 +7,22 @@ using UnityEngine;
 
 namespace ModCrafting
 {
+    /// <summary>
+    /// ModCrafting is a mod for Green Hell, that allows a player to craft any game item
+    /// without the needed materials and to destroy any item pointed at with the mouse.
+    /// (only in single player mode - Use ModManager for multiplayer).
+    /// Enable the mod UI by pressing Home.
+    /// </summary>
     public class ModCrafting : MonoBehaviour, IYesNoDialogOwner
     {
         private static ModCrafting Instance;
 
         private static readonly string ModName = nameof(ModCrafting);
-        private static readonly float ModScreenWidth = 850f;
-        private static readonly float ModScreenMaxHeight = 500f;
+        private static readonly float ModScreenTotalWidth = 850f;
+        private static readonly float ModScreenTotalHeight = 500f;
+        private static readonly float ModScreenMinHeight = 30f;
+        private static readonly float ModScreenMaxHeight = 530f;
+
         private static bool IsMinimized { get; set; } = false;
 
         private bool ShowUI = false;
@@ -24,13 +33,23 @@ namespace ModCrafting
         private static Player LocalPlayer;
         private static InventoryBackpack LocalInventoryBackpack;
 
-        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, ModScreenWidth, ModScreenMaxHeight);
+        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, ModScreenTotalWidth, ModScreenTotalHeight);
         public static Vector2 FilteredItemsScrollViewPosition;
         public static string SelectedItemToCraftItemName;
         public static int SelectedItemToCraftIndex;
         public static ItemID SelectedItemToCraftItemID;
         public static Item SelectedItemToCraft;
-        public static GameObject SelectedObjectToDestroy;
+        public static GameObject SelectedGameObjectToDestroy = null;
+        public static Item SelectedItemToDestroy = null;
+        public static string SelectedGameObjectToDestroyName = string.Empty;
+        public static List<string> DestroyableObjectNames { get; set; } = new List<string> {
+                                                                                "tree", "plant", "leaf", "stone", "bag", "beam", "corrugated", "anaconda",
+                                                                                "metal", "board", "cardboard", "plank", "plastic", "tarp", "oil", "sock",
+                                                                                "cartel", "military", "tribal", "village", "ayahuasca", "gas", "boat", "ship",
+                                                                                "bridge", "chair", "stove", "barrel", "tank", "jerrycan", "microwave",
+                                                                                "sprayer", "shelf", "wind", "bottle", "trash", "lab", "table", "diving",
+                                                                                "roof", "floor", "hull", "frame", "cylinder", "wire", "wiretap"
+                                                                        };
         public static string SelectedFilterName;
         public static int SelectedFilterIndex;
         public static ItemFilter SelectedFilter = ItemFilter.All;
@@ -38,20 +57,20 @@ namespace ModCrafting
         public static bool ShouldAddToBackpackOption = true;
         public static List<Item> CraftedItems = new List<Item>();
 
+        public bool DestroyTargetOption { get; private set; }
+
         public bool IsModActiveForMultiplayer { get; private set; }
         public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
 
-        public static string ItemDestroyedMessage(string item) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{item} destroyed!</color>";
-
-        public static string NoItemSelectedMessage() => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>No item selected to destroy!</color>";
-
-        public static string NoItemCraftedMessage() => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>Item could not be crafted!</color>";
-
-        public static string ItemCraftedMessage(string item, int count) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>{count} x {item} crafted!</color>";
-
+        public static string OnlyForSinglePlayerOrHostMessage() => $"Only available for single player or when host. Host can activate using ModManager.";
+        public static string ItemDestroyedMessage(string item) => $"{item} destroyed!";
+        public static string ItemNotDestroyedMessage(string item) => $"{item} cannot be destroyed!";
+        public static string ItemNotSelectedMessage() => $"Not any item selected to destroy!";
+        public static string ItemNotCraftedMessage() => $"Item could not be crafted!";
+        public static string ItemCraftedMessage(string item, int count) => $"{count} x {item} crafted!";
         public static string PermissionChangedMessage(string permission) => $"Permission to use mods and cheats in multiplayer was {permission}";
-
-        public static string HUDBigInfoMessage(string message) => $"<color=#{ColorUtility.ToHtmlStringRGBA(Color.red)}>System</color>\n{message}";
+        public static string HUDBigInfoMessage(string message, MessageType messageType, Color? headcolor = null)
+            => $"<color=#{ (headcolor != null ? ColorUtility.ToHtmlStringRGBA(headcolor.Value) : ColorUtility.ToHtmlStringRGBA(Color.red))  }>{messageType}</color>\n{message}";
 
         public void Start()
         {
@@ -63,8 +82,8 @@ namespace ModCrafting
             IsModActiveForMultiplayer = optionValue;
             ShowHUDBigInfo(
                           (optionValue ?
-                            HUDBigInfoMessage(PermissionChangedMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.green)}>granted!</color>"))
-                            : HUDBigInfoMessage(PermissionChangedMessage($"<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>revoked!</color>")))
+                            HUDBigInfoMessage(PermissionChangedMessage($"granted"), MessageType.Info, Color.green)
+                            : HUDBigInfoMessage(PermissionChangedMessage($"revoked"), MessageType.Info, Color.yellow))
                             );
         }
 
@@ -85,7 +104,7 @@ namespace ModCrafting
             string textureName = HUDInfoLogTextureType.Count.ToString();
 
             HUDBigInfo bigInfo = (HUDBigInfo)LocalHUDManager.GetHUD(typeof(HUDBigInfo));
-            HUDBigInfoData.s_Duration = 5f;
+            HUDBigInfoData.s_Duration = 2f;
             HUDBigInfoData bigInfoData = new HUDBigInfoData
             {
                 m_Header = header,
@@ -142,47 +161,66 @@ namespace ModCrafting
 
             if (Input.GetKeyDown(KeyCode.Delete))
             {
-                DestroyMouseTarget();
+                DestroyTarget();
             }
         }
 
-        public void DestroyMouseTarget()
+        public void DestroyTarget()
         {
             try
             {
                 if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
                 {
-                    if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo))
+                    if (DestroyTargetOption)
                     {
-                        GameObject go = hitInfo.collider.transform.gameObject;
-                        if (go != null)
+                        if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo))
                         {
-                            SelectedObjectToDestroy = go;
-                            ShowConfirmDestroyDialog();
+                            DestroyOnHit(hitInfo);
                         }
                     }
                 }
                 else
                 {
-                    ShowHUDBigInfo(OnlyForSinglePlayerOrHostMessage());
+                    ShowHUDBigInfo(HUDBigInfoMessage(OnlyForSinglePlayerOrHostMessage(), MessageType.Warning, Color.yellow));
                 }
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}:{nameof(DestroyMouseTarget)}] throws exception:\n{exc.Message}");
+                ModAPI.Log.Write($"[{ModName}:{nameof(DestroyTarget)}] throws exception:\n{exc.Message}");
+            }
+        }
+
+        public void DestroyOnHit(RaycastHit hitInfo)
+        {
+            try
+            {
+                if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
+                {
+                    GameObject go = hitInfo.collider.transform.gameObject;
+                    if (go != null)
+                    {
+                        SelectedGameObjectToDestroy = go.gameObject;
+                        ShowConfirmDestroyDialog();
+                    }
+                }
+                else
+                {
+                    ShowHUDBigInfo(HUDBigInfoMessage(OnlyForSinglePlayerOrHostMessage(), MessageType.Warning, Color.yellow));
+                }
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{ModName}:{nameof(DestroyOnHit)}] throws exception:\n{exc.Message}");
             }
         }
 
         private void ShowConfirmDestroyDialog()
         {
             EnableCursor(true);
-            string description = SelectedObjectToDestroy != null ? SelectedObjectToDestroy.gameObject.name : $"{SelectedFilter} items that were crafted using this mod";
-            YesNoDialog destroyYesNo = GreenHellGame.GetYesNoDialog();
-            destroyYesNo.Show(this, DialogWindowType.YesNo, $"{ModName} Info", $"Destroy {description}?", true);
+            string description = $"Are you sure you want to destroy selected { (SelectedGameObjectToDestroy != null ? SelectedGameObjectToDestroy.name : SelectedFilter.ToString().ToLower()) }?";
+            YesNoDialog destroyYesNoDialog = GreenHellGame.GetYesNoDialog();
+            destroyYesNoDialog.Show(this, DialogWindowType.YesNo, $"{ModName} Info", description, true);
         }
-
-        public static string OnlyForSinglePlayerOrHostMessage()
-            => $"\n<color=#{ColorUtility.ToHtmlStringRGBA(Color.yellow)}>DELETE option</color> is only available for single player or when host.\nHost can activate using <b>ModManager</b>.";
 
         private void ToggleShowUI()
         {
@@ -193,40 +231,55 @@ namespace ModCrafting
         {
             try
             {
-                if (SelectedObjectToDestroy != null)
+                if (SelectedGameObjectToDestroy != null)
                 {
-                    Item toDestroy = SelectedObjectToDestroy.GetComponent<Item>();
-                    if (toDestroy != null)
+                    SelectedItemToDestroy = SelectedGameObjectToDestroy.GetComponent<Item>();
+                    SelectedGameObjectToDestroyName = SelectedItemToDestroy != null && SelectedItemToDestroy.m_Info != null
+                                                                                                    ? SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()
+                                                                                                    : GreenHellGame.Instance.GetLocalization().Get(SelectedGameObjectToDestroy.name);
+
+                    if (SelectedItemToDestroy != null || IsDestroyable(SelectedGameObjectToDestroy))
                     {
-                        if (!toDestroy.IsPlayer() && !toDestroy.IsAI() && !toDestroy.IsHumanAI())
+                        if (SelectedItemToDestroy != null && !SelectedItemToDestroy.IsPlayer() && !SelectedItemToDestroy.IsAI() && !SelectedItemToDestroy.IsHumanAI())
                         {
-                            LocalItemsManager.AddItemToDestroy(toDestroy);
+                            LocalItemsManager.AddItemToDestroy(SelectedItemToDestroy);
                         }
+                        else
+                        {
+                            Destroy(SelectedGameObjectToDestroy);
+                        }
+                        ShowHUDBigInfo(HUDBigInfoMessage(ItemDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Info, Color.green));
                     }
                     else
                     {
-                        Destroy(SelectedObjectToDestroy.gameObject);
+                        ShowHUDBigInfo(HUDBigInfoMessage(ItemNotDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Error, Color.red));
                     }
                 }
                 else
                 {
-                    if (CraftedItems != null)
-                    {
-                        List<Item> toDestroy = GetCraftedItems(SelectedFilter);
-                        if (toDestroy != null)
-                        {
-                            foreach (Item craftedItem in toDestroy)
-                            {
-                                LocalItemsManager.AddItemToDestroy(craftedItem);
-                            }
-                            toDestroy.Clear();
-                        }
-                    }
+                    ShowHUDBigInfo(HUDBigInfoMessage(ItemNotSelectedMessage(), MessageType.Warning, Color.yellow));
                 }
             }
             catch (Exception exc)
             {
                 ModAPI.Log.Write($"[{ModName}:{nameof(DestroySelectedItem)}] throws exception:\n{exc.Message}");
+            }
+        }
+
+        private bool IsDestroyable(GameObject go)
+        {
+            try
+            {
+                if (go == null || string.IsNullOrEmpty(go.name))
+                {
+                    return false;
+                }
+                return DestroyableObjectNames.Any(destroyableObjectName => go.name.ToLower().Contains(destroyableObjectName));
+            }
+            catch (Exception exc)
+            {
+                ModAPI.Log.Write($"[{ModName}:{nameof(IsDestroyable)}] throws exception:\n{exc.Message}");
+                return false;
             }
         }
 
@@ -262,13 +315,49 @@ namespace ModCrafting
 
         private void InitModCraftingScreen(int windowID)
         {
-            using (var verticalScope = new GUILayout.VerticalScope(GUI.skin.box, GUILayout.ExpandHeight(true)))
+            using (var modContentScope = new GUILayout.VerticalScope(GUI.skin.box, GUILayout.ExpandHeight(true), GUILayout.MinHeight(ModScreenMinHeight), GUILayout.MaxHeight(ModScreenMaxHeight)))
             {
                 ScreenMenuBox();
-                DestroyItemsBox();
-                CraftItemsBox();
+                if (!IsMinimized)
+                {
+                    ModOptionsBox();
+                    ItemsFilterBox();
+                    DestroyItemsBox();
+                    CraftItemsBox();
+                }
             }
             GUI.DragWindow(new Rect(0f, 0f, 10000f, 10000f));
+        }
+
+        private void ModOptionsBox()
+        {
+            if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
+            {
+                using (var optionScope = new GUILayout.VerticalScope(GUI.skin.box))
+                {
+                    if (IsModActiveForMultiplayer)
+                    {
+                        GUI.color = Color.green;
+                        GUILayout.Label(PermissionChangedMessage($"granted"), GUI.skin.label);
+                    }
+                    else
+                    {
+                        GUI.color = Color.yellow;
+                        PermissionChangedMessage($"revoked");
+                    }
+                    GUI.color = Color.white;
+                    DestroyTargetOption = GUILayout.Toggle(DestroyTargetOption, $"Use [DELETE] to destroy target?", GUI.skin.toggle);
+                }
+            }
+            else
+            {
+                using (var infoScope = new GUILayout.VerticalScope(GUI.skin.box))
+                {
+                    GUI.color = Color.yellow;
+                    GUILayout.Label(OnlyForSinglePlayerOrHostMessage(), GUI.skin.label);
+                    GUI.color = Color.white;
+                }
+            }
         }
 
         private void DestroyItemsBox()
@@ -300,14 +389,15 @@ namespace ModCrafting
         {
             if (!IsMinimized)
             {
-                ModCraftingScreen = new Rect(ModCraftingScreen.x, ModCraftingScreen.y, ModCraftingScreen.width, 30f);
+                ModCraftingScreen.Set(Screen.width - ModCraftingScreen.x, Screen.height - ModScreenMinHeight, ModScreenTotalWidth, ModScreenMinHeight);
                 IsMinimized = true;
             }
             else
             {
-                ModCraftingScreen = new Rect(ModCraftingScreen.x, ModCraftingScreen.y, ModCraftingScreen.width, ModScreenMaxHeight);
+                ModCraftingScreen.Set(Screen.width / ModScreenMinHeight, Screen.height / ModScreenMinHeight, ModScreenTotalWidth, ModScreenTotalHeight);
                 IsMinimized = false;
             }
+            InitWindow();
         }
 
         private void CloseWindow()
@@ -318,7 +408,6 @@ namespace ModCrafting
 
         private void CraftItemsBox()
         {
-            ItemsFilterBox();
             ItemsScrollViewBox();
         }
 
@@ -600,17 +689,15 @@ namespace ModCrafting
 
                 ShowHUDBigInfo(
                        HUDBigInfoMessage(
-                           ItemCraftedMessage(LocalItemsManager.GetInfo(SelectedItemToCraftItemID).GetNameToDisplayLocalized(), CountToCraft)
+                           ItemCraftedMessage(LocalItemsManager.GetInfo(SelectedItemToCraftItemID).GetNameToDisplayLocalized(), CountToCraft),
+                           MessageType.Info,
+                           Color.green
                        )
                 );
             }
             else
             {
-                ShowHUDBigInfo(
-                    HUDBigInfoMessage(
-                        NoItemCraftedMessage()
-                    )
-                );
+                ShowHUDBigInfo(HUDBigInfoMessage(ItemNotCraftedMessage(), MessageType.Info, Color.yellow));
             }
         }
 
@@ -621,23 +708,13 @@ namespace ModCrafting
 
         public void OnYesFromDialog()
         {
-            string destroyed = SelectedObjectToDestroy != null ? SelectedObjectToDestroy.gameObject.name : $"{SelectedFilter} items that were crafted using this mod";
-
             DestroySelectedItem();
-
-            ShowHUDBigInfo(
-                HUDBigInfoMessage(
-                    ItemDestroyedMessage(
-                        $"{destroyed}"
-                    )
-                )
-            );
             EnableCursor(false);
         }
 
         public void OnNoFromDialog()
         {
-            SelectedObjectToDestroy = null;
+            SelectedGameObjectToDestroy = null;
             EnableCursor(false);
         }
 
