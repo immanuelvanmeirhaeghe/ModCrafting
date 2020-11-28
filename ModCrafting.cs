@@ -40,16 +40,16 @@ namespace ModCrafting
         public static ItemID SelectedItemToCraftItemID;
         public static Item SelectedItemToCraft;
         public static GameObject SelectedGameObjectToDestroy = null;
-        public static Item SelectedItemToDestroy = null;
         public static string SelectedGameObjectToDestroyName = string.Empty;
         public static List<string> DestroyableObjectNames { get; set; } = new List<string> {
                                                                                 "tree", "plant", "leaf", "stone", "seat", "bag", "beam", "corrugated", "anaconda",
-                                                                                "metal", "board", "cardboard", "plank", "plastic", "tarp", "oil", "sock",
+                                                                                "metal", "board", "cardboard", "plank", "plastic", "small", "tarp", "oil", "sock",
                                                                                 "cartel", "military", "tribal", "village", "ayahuasca", "gas", "boat", "ship",
                                                                                 "bridge", "chair", "stove", "barrel", "tank", "jerrycan", "microwave",
-                                                                                "sprayer", "shelf", "wind", "bottle", "trash", "lab", "table", "diving",
-                                                                                "roof", "floor", "hull", "frame", "cylinder", "wire", "wiretap"
+                                                                                "sprayer", "shelf", "wind", "air", "bottle", "trash", "lab", "table", "diving",
+                                                                                "roof", "floor", "hull", "frame", "cylinder", "wire", "wiretap", "generator"
                                                                         };
+        public static Item SelectedItemToDestroy = null;
         public static string SelectedFilterName;
         public static int SelectedFilterIndex;
         public static ItemFilter SelectedFilter = ItemFilter.All;
@@ -255,6 +255,22 @@ namespace ModCrafting
                         ShowHUDBigInfo(HUDBigInfoMessage(ItemNotDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Error, Color.red));
                     }
                 }
+                else if (CraftedItems != null)
+                {
+                    List<Item> toDestroy = GetCraftedItems(SelectedFilter);
+                    if (toDestroy != null)
+                    {
+                        foreach (Item craftedItem in toDestroy)
+                        {
+                            LocalItemsManager.AddItemToDestroy(craftedItem);
+                        }
+                        toDestroy.Clear();
+                    }
+                    else
+                    {
+                        ShowHUDBigInfo(HUDBigInfoMessage(ItemNotSelectedMessage(), MessageType.Warning, Color.yellow));
+                    }
+                }
                 else
                 {
                     ShowHUDBigInfo(HUDBigInfoMessage(ItemNotSelectedMessage(), MessageType.Warning, Color.yellow));
@@ -364,7 +380,7 @@ namespace ModCrafting
         {
             using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                GUILayout.Label($"Choose a filter, then click to destroy {SelectedFilter.ToString().ToLower()} items that were crafted using this mod.", GUI.skin.label);
+                GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} items that were crafted using this mod.", GUI.skin.label);
                 if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
                 {
                     ShowConfirmDestroyDialog();
