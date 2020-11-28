@@ -43,7 +43,7 @@ namespace ModCrafting
         public static Item SelectedItemToDestroy = null;
         public static string SelectedGameObjectToDestroyName = string.Empty;
         public static List<string> DestroyableObjectNames { get; set; } = new List<string> {
-                                                                                "tree", "plant", "leaf", "stone", "bag", "beam", "corrugated", "anaconda",
+                                                                                "tree", "plant", "leaf", "stone", "seat", "bag", "beam", "corrugated", "anaconda",
                                                                                 "metal", "board", "cardboard", "plank", "plastic", "tarp", "oil", "sock",
                                                                                 "cartel", "military", "tribal", "village", "ayahuasca", "gas", "boat", "ship",
                                                                                 "bridge", "chair", "stove", "barrel", "tank", "jerrycan", "microwave",
