@@ -443,7 +443,8 @@ namespace ModCrafting
             switch (filter)
             {
                 case ItemFilter.Keyword:
-                    filteredInfos = allInfos.Where(info => info.GetNameToDisplayLocalized().Contains(SearchItemKeyWord)).ToList();
+                    filteredInfos = allInfos.Where(info => info.GetNameToDisplayLocalized().ToLower().Contains(SearchItemKeyWord.Trim().ToLower())
+                                                                                        || info.m_ID.ToString().ToLower().Contains(SearchItemKeyWord.Trim().ToLower())).ToList();
                     break;
                 case ItemFilter.Medical:
                     filteredInfos =GetMedical();
@@ -652,7 +653,7 @@ namespace ModCrafting
                     GUI.color = Color.cyan;
                     GUILayout.Label("Choose an item filter. If you want to search for items on keyword, type it in the field bellow: ", GUI.skin.label);
                     GUI.color = Color.white;
-                    GUILayout.TextField(SearchItemKeyWord, GUI.skin.textField);
+                    SearchItemKeyWord =  GUILayout.TextField(SearchItemKeyWord, GUI.skin.textField);
                     SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
                     if (GUILayout.Button($"Apply filter", GUI.skin.button))
                     {
