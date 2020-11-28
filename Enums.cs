@@ -2,6 +2,7 @@
 {
     public enum ItemFilter
     {
+        Keyword,
         All,
         Resources,
         Food,
@@ -9,7 +10,8 @@
         Tools,
         Weapons,
         Armor,
-        Unique
+        Unique,
+        Medical
     }
 
     public enum MessageType

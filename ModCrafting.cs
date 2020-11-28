@@ -33,7 +33,9 @@ namespace ModCrafting
         private static Player LocalPlayer;
         private static InventoryBackpack LocalInventoryBackpack;
 
-        public static Rect ModCraftingScreen = new Rect(Screen.width / ModScreenMinHeight, Screen.height / ModScreenMinHeight, ModScreenTotalWidth, ModScreenTotalHeight);
+        public static Rect ModCraftingScreen = new Rect(Screen.width / 2f, Screen.height / 2f, ModScreenTotalWidth, ModScreenTotalHeight);
+
+        public static string SearchItemKeyWord = string.Empty;
         public static Vector2 FilteredItemsScrollViewPosition;
         public static string SelectedItemToCraftItemName;
         public static int SelectedItemToCraftIndex;
@@ -380,7 +382,7 @@ namespace ModCrafting
         {
             using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} items that were crafted using this mod.", GUI.skin.label);
+                GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} that were crafted using this mod.", GUI.skin.label);
                 if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
                 {
                     ShowConfirmDestroyDialog();
@@ -440,6 +442,12 @@ namespace ModCrafting
             List<ItemInfo> filteredInfos = new List<ItemInfo>();
             switch (filter)
             {
+                case ItemFilter.Keyword:
+                    filteredInfos = allInfos.Where(info => info.GetNameToDisplayLocalized().Contains(SearchItemKeyWord)).ToList();
+                    break;
+                case ItemFilter.Medical:
+                    filteredInfos =GetMedical();
+                    break;
                 case ItemFilter.Unique:
                     filteredInfos = GetUnique();
                     break;
@@ -476,6 +484,58 @@ namespace ModCrafting
             }
             return filteredItemNames.OrderBy(itemName => itemName).ToArray();
         }
+
+        private List<ItemInfo> GetMedical() => new List<ItemInfo>
+            {
+                LocalItemsManager.GetInfo(ItemID.Molineria_leaf),
+                LocalItemsManager.GetInfo(ItemID.lily_dressing),
+                LocalItemsManager.GetInfo(ItemID.ash_dressing),
+                LocalItemsManager.GetInfo(ItemID.Goliath_dressing),
+                LocalItemsManager.GetInfo(ItemID.Ficus_Dressing),
+                LocalItemsManager.GetInfo(ItemID.Honey_Dressing),
+                LocalItemsManager.GetInfo(ItemID.Tabaco_Dressing),
+                LocalItemsManager.GetInfo(ItemID.Campfire_ash),
+                LocalItemsManager.GetInfo(ItemID.Goliath_birdeater_ash),
+                LocalItemsManager.GetInfo(ItemID.Plantain_lily_leaf),
+                LocalItemsManager.GetInfo(ItemID.Ficus_leaf),
+                LocalItemsManager.GetInfo(ItemID.Tobacco_Leaf),
+                LocalItemsManager.GetInfo(ItemID.Charcoal),
+                LocalItemsManager.GetInfo(ItemID.Bone),
+                LocalItemsManager.GetInfo(ItemID.Fish_Bone),
+                LocalItemsManager.GetInfo(ItemID.copa_hongo),
+                LocalItemsManager.GetInfo(ItemID.lily_flower),
+                LocalItemsManager.GetInfo(ItemID.Albahaca_Leaf),
+                LocalItemsManager.GetInfo(ItemID.coca_leafs),
+                LocalItemsManager.GetInfo(ItemID.Leaf_Bandage),
+                LocalItemsManager.GetInfo(ItemID.Ants),
+                LocalItemsManager.GetInfo(ItemID.Ant_Head),
+                LocalItemsManager.GetInfo(ItemID.Ayahasca_Recepie),
+                LocalItemsManager.GetInfo(ItemID.coffee_instant),
+                LocalItemsManager.GetInfo(ItemID.Guanabana_Fruit),
+                LocalItemsManager.GetInfo(ItemID.Honeycomb),
+                LocalItemsManager.GetInfo(ItemID.indigo_blue_leptonia),
+                LocalItemsManager.GetInfo(ItemID.Maggot),
+                LocalItemsManager.GetInfo(ItemID.Maggots),
+                LocalItemsManager.GetInfo(ItemID.molineria_flowers),
+                LocalItemsManager.GetInfo(ItemID.Painkillers),
+                LocalItemsManager.GetInfo(ItemID.Phallus_indusiatus),
+                LocalItemsManager.GetInfo(ItemID.plantain_lilly_flowers),
+                LocalItemsManager.GetInfo(ItemID.Turtle_shell),
+                LocalItemsManager.GetInfo(ItemID.Coconut_Bowl),
+                LocalItemsManager.GetInfo(ItemID.Gerronema_retiarium),
+                LocalItemsManager.GetInfo(ItemID.Gerronema_viridilucens),
+                LocalItemsManager.GetInfo(ItemID.marasmius_haematocephalus),
+                LocalItemsManager.GetInfo(ItemID.military_bed_toUse),
+                LocalItemsManager.GetInfo(ItemID.monstera_deliciosa_fruit),
+                LocalItemsManager.GetInfo(ItemID.PoisonDartFrog_Alive),
+                LocalItemsManager.GetInfo(ItemID.psychotria_viridis),
+                LocalItemsManager.GetInfo(ItemID.psychotria_viridis_berries),
+                LocalItemsManager.GetInfo(ItemID.Quassia_Amara_flowers),
+                LocalItemsManager.GetInfo(ItemID.QuestItem_BioHazmatSuit),
+                LocalItemsManager.GetInfo(ItemID.QuestItem_Cure_Vial),
+                LocalItemsManager.GetInfo(ItemID.tobacco_flowers),
+                LocalItemsManager.GetInfo(ItemID.Tobacco_Torch)
+            };
 
         private List<Item> GetCraftedItems(ItemFilter filter)
         {
@@ -590,8 +650,9 @@ namespace ModCrafting
                 {
                     int filtersCount = filters.Length;
                     GUI.color = Color.cyan;
-                    GUILayout.Label("Choose an item filter: ", GUI.skin.label);
+                    GUILayout.Label("Choose an item filter. If you want to search for items on keyword, type it in the field bellow: ", GUI.skin.label);
                     GUI.color = Color.white;
+                    GUILayout.TextField(SearchItemKeyWord, GUI.skin.textField);
                     SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
                     if (GUILayout.Button($"Apply filter", GUI.skin.button))
                     {
@@ -603,7 +664,7 @@ namespace ModCrafting
 
         private void ItemsScrollViewBox()
         {
-            using (var viewScope = new GUILayout.VerticalScope(GUI.skin.box))
+            using (var itemsViewScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
                 FilteredItemsScrollView();
                 using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
