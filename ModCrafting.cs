@@ -33,7 +33,7 @@ namespace ModCrafting
         private static Player LocalPlayer;
         private static InventoryBackpack LocalInventoryBackpack;
 
-        public static Rect ModCraftingScreen = new Rect(Screen.width / 40f, Screen.height / 40f, ModScreenTotalWidth, ModScreenTotalHeight);
+        public static Rect ModCraftingScreen = new Rect(Screen.width / ModScreenMinHeight, Screen.height / ModScreenMinHeight, ModScreenTotalWidth, ModScreenTotalHeight);
         public static Vector2 FilteredItemsScrollViewPosition;
         public static string SelectedItemToCraftItemName;
         public static int SelectedItemToCraftIndex;
@@ -389,12 +389,12 @@ namespace ModCrafting
         {
             if (!IsMinimized)
             {
-                ModCraftingScreen.Set(Screen.width - ModCraftingScreen.x, Screen.height - ModScreenMinHeight, ModScreenTotalWidth, ModScreenMinHeight);
+                ModCraftingScreen.Set(ModCraftingScreen.x, Screen.height - ModScreenMinHeight, ModScreenTotalWidth, ModScreenMinHeight);
                 IsMinimized = true;
             }
             else
             {
-                ModCraftingScreen.Set(Screen.width / ModScreenMinHeight, Screen.height / ModScreenMinHeight, ModScreenTotalWidth, ModScreenTotalHeight);
+                ModCraftingScreen.Set(ModCraftingScreen.x, Screen.height / ModScreenMinHeight, ModScreenTotalWidth, ModScreenTotalHeight);
                 IsMinimized = false;
             }
             InitWindow();
