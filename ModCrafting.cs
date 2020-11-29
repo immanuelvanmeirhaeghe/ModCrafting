@@ -20,6 +20,7 @@ namespace ModCrafting
         private static readonly string ModName = nameof(ModCrafting);
         private static readonly float ModScreenTotalWidth = 850f;
         private static readonly float ModScreenTotalHeight = 500f;
+        private static readonly float ModScreenMinWidth = 50f;
         private static readonly float ModScreenMinHeight = 30f;
         private static readonly float ModScreenMaxHeight = 530f;
 
@@ -33,7 +34,7 @@ namespace ModCrafting
         private static Player LocalPlayer;
         private static InventoryBackpack LocalInventoryBackpack;
 
-        public static Rect ModCraftingScreen = new Rect(Screen.width / 2f, Screen.height / 2f, ModScreenTotalWidth, ModScreenTotalHeight);
+        public static Rect ModCraftingScreen = new Rect(0f, 0f, ModScreenTotalWidth, ModScreenTotalHeight);
 
         public static string SearchItemKeyWord = string.Empty;
         public static Vector2 FilteredItemsScrollViewPosition;
@@ -407,7 +408,7 @@ namespace ModCrafting
         {
             if (!IsMinimized)
             {
-                ModCraftingScreen.Set(ModCraftingScreen.x, Screen.height - ModScreenMinHeight, ModScreenTotalWidth, ModScreenMinHeight);
+                ModCraftingScreen.Set(ModCraftingScreen.x, Screen.height - ModScreenMinHeight, ModScreenMinWidth, ModScreenMinHeight);
                 IsMinimized = true;
             }
             else
@@ -795,7 +796,10 @@ namespace ModCrafting
         public void OnNoFromDialog()
         {
             SelectedGameObjectToDestroy = null;
-            EnableCursor(false);
+            if (!ShowUI)
+            {
+                EnableCursor(false);
+            }
         }
 
         public void OnOkFromDialog()
@@ -805,7 +809,10 @@ namespace ModCrafting
 
         public void OnCloseDialog()
         {
-            EnableCursor(false);
+            if (!ShowUI)
+            {
+                EnableCursor(false);
+            }
         }
     }
 }
