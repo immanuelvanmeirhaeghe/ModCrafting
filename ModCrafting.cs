@@ -676,7 +676,6 @@ namespace ModCrafting
                     if (GUILayout.Button($"Craft selected", GUI.skin.button, GUILayout.MaxWidth(200f)))
                     {
                         OnClickCraftSelectedItemButton();
-                        CloseWindow();
                     }
                 }
             }
@@ -787,7 +786,10 @@ namespace ModCrafting
         public void OnYesFromDialog()
         {
             DestroySelectedItem();
-            EnableCursor(false);
+            if (!ShowUI)
+            {
+                EnableCursor(false);
+            }
         }
 
         public void OnNoFromDialog()
