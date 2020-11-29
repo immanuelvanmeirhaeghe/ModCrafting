@@ -21,9 +21,9 @@ namespace ModCrafting
         private static readonly float ModScreenTotalWidth = 850f;
         private static readonly float ModScreenTotalHeight = 500f;
         private static readonly float ModScreenMinWidth = 50f;
-        private static readonly float ModScreenMinHeight = 30f;
-        private static readonly float ModScreenMaxHeight = 530f;
-
+        private static readonly float ModScreenMaxWidth = 850f;
+        private static readonly float ModScreenMinHeight = 50f;
+        private static readonly float ModScreenMaxHeight = 550f;
         private static bool IsMinimized { get; set; } = false;
 
         private bool ShowUI = false;
@@ -35,7 +35,6 @@ namespace ModCrafting
         private static InventoryBackpack LocalInventoryBackpack;
 
         public static Rect ModCraftingScreen = new Rect(0f, 0f, ModScreenTotalWidth, ModScreenTotalHeight);
-
         public static string SearchItemKeyWord = string.Empty;
         public static Vector2 FilteredItemsScrollViewPosition;
         public static string SelectedItemToCraftItemName;
@@ -199,16 +198,19 @@ namespace ModCrafting
             {
                 if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
                 {
-                    GameObject go = hitInfo.collider.transform.gameObject;
-                    if (go != null)
+                    if (DestroyTargetOption)
                     {
-                        SelectedGameObjectToDestroy = go.gameObject;
-                        ShowConfirmDestroyDialog();
+                        GameObject go = hitInfo.collider.transform.gameObject;
+                        if (go != null)
+                        {
+                            SelectedGameObjectToDestroy = go.gameObject;
+                            ShowConfirmDestroyDialog();
+                        }
                     }
-                }
-                else
-                {
-                    ShowHUDBigInfo(HUDBigInfoMessage(OnlyForSinglePlayerOrHostMessage(), MessageType.Warning, Color.yellow));
+                    else
+                    {
+                        ShowHUDBigInfo(HUDBigInfoMessage(OnlyForSinglePlayerOrHostMessage(), MessageType.Warning, Color.yellow));
+                    }
                 }
             }
             catch (Exception exc)
@@ -223,6 +225,7 @@ namespace ModCrafting
             string description = $"Are you sure you want to destroy selected { (SelectedGameObjectToDestroy != null ? SelectedGameObjectToDestroy.name : SelectedFilter.ToString().ToLower()) }?";
             YesNoDialog destroyYesNoDialog = GreenHellGame.GetYesNoDialog();
             destroyYesNoDialog.Show(this, DialogWindowType.YesNo, $"{ModName} Info", description, true);
+            destroyYesNoDialog.gameObject.SetActive(true);
         }
 
         private void ToggleShowUI()
@@ -334,7 +337,14 @@ namespace ModCrafting
 
         private void InitModCraftingScreen(int windowID)
         {
-            using (var modContentScope = new GUILayout.VerticalScope(GUI.skin.box, GUILayout.ExpandHeight(true), GUILayout.MinHeight(ModScreenMinHeight), GUILayout.MaxHeight(ModScreenMaxHeight)))
+            using (var modContentScope = new GUILayout.VerticalScope(
+                                                                                                                     GUI.skin.box,
+                                                                                                                     GUILayout.ExpandWidth(true),
+                                                                                                                     GUILayout.MinWidth(ModScreenMinWidth),
+                                                                                                                     GUILayout.MaxWidth(ModScreenMaxWidth),
+                                                                                                                     GUILayout.ExpandHeight(true),
+                                                                                                                     GUILayout.MinHeight(ModScreenMinHeight),
+                                                                                                                     GUILayout.MaxHeight(ModScreenMaxHeight)))
             {
                 ScreenMenuBox();
                 if (!IsMinimized)
@@ -383,7 +393,7 @@ namespace ModCrafting
         {
             using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
-                GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} that were crafted using this mod.", GUI.skin.label);
+                GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} crafted using this mod.", GUI.skin.label);
                 if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
                 {
                     ShowConfirmDestroyDialog();
@@ -787,19 +797,13 @@ namespace ModCrafting
         public void OnYesFromDialog()
         {
             DestroySelectedItem();
-            if (!ShowUI)
-            {
-                EnableCursor(false);
-            }
+            EnableCursor(false);
         }
 
         public void OnNoFromDialog()
         {
             SelectedGameObjectToDestroy = null;
-            if (!ShowUI)
-            {
-                EnableCursor(false);
-            }
+            EnableCursor(false);
         }
 
         public void OnOkFromDialog()
@@ -809,10 +813,7 @@ namespace ModCrafting
 
         public void OnCloseDialog()
         {
-            if (!ShowUI)
-            {
-                EnableCursor(false);
-            }
+            EnableCursor(false);
         }
     }
 }
