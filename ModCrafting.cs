@@ -24,6 +24,8 @@ namespace ModCrafting
         private static readonly float ModScreenMaxWidth = 850f;
         private static readonly float ModScreenMinHeight = 50f;
         private static readonly float ModScreenMaxHeight = 550f;
+        private static float ModScreenStartPositionX { get; set; } = (Screen.width - ModScreenMaxWidth) % ModScreenTotalWidth;
+        private static float ModScreenStartPositionY { get; set; } = (Screen.height - ModScreenMaxHeight) % ModScreenTotalHeight;
         private static bool IsMinimized { get; set; } = false;
 
         private bool ShowUI = false;
@@ -338,13 +340,13 @@ namespace ModCrafting
         private void InitModCraftingScreen(int windowID)
         {
             using (var modContentScope = new GUILayout.VerticalScope(
-                                                                                                                     GUI.skin.box,
-                                                                                                                     GUILayout.ExpandWidth(true),
-                                                                                                                     GUILayout.MinWidth(ModScreenMinWidth),
-                                                                                                                     GUILayout.MaxWidth(ModScreenMaxWidth),
-                                                                                                                     GUILayout.ExpandHeight(true),
-                                                                                                                     GUILayout.MinHeight(ModScreenMinHeight),
-                                                                                                                     GUILayout.MaxHeight(ModScreenMaxHeight)))
+                                                                                                          GUI.skin.box,
+                                                                                                          GUILayout.ExpandWidth(true),
+                                                                                                          GUILayout.MinWidth(ModScreenMinWidth),
+                                                                                                          GUILayout.MaxWidth(ModScreenMaxWidth),
+                                                                                                          GUILayout.ExpandHeight(true),
+                                                                                                          GUILayout.MinHeight(ModScreenMinHeight),
+                                                                                                          GUILayout.MaxHeight(ModScreenMaxHeight)))
             {
                 ScreenMenuBox();
                 if (!IsMinimized)
@@ -418,12 +420,14 @@ namespace ModCrafting
         {
             if (!IsMinimized)
             {
-                ModCraftingScreen.Set(ModCraftingScreen.x, Screen.height - ModScreenMinHeight, ModScreenMinWidth, ModScreenMinHeight);
+                ModScreenStartPositionX = ModCraftingScreen.x;
+                ModScreenStartPositionY = ModCraftingScreen.y;
+                ModCraftingScreen.Set(ModCraftingScreen.x, ModCraftingScreen.y, ModScreenMinWidth, ModScreenMinHeight);
                 IsMinimized = true;
             }
             else
             {
-                ModCraftingScreen.Set(ModCraftingScreen.x, Screen.height / ModScreenMinHeight, ModScreenTotalWidth, ModScreenTotalHeight);
+                ModCraftingScreen.Set(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenTotalHeight);
                 IsMinimized = false;
             }
             InitWindow();
