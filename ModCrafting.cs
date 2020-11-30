@@ -320,7 +320,18 @@ namespace ModCrafting
         private void InitWindow()
         {
             int wid = GetHashCode();
-            ModCraftingScreen = GUILayout.Window(wid, ModCraftingScreen, InitModCraftingScreen, $"{ModName}", GUI.skin.window);
+            ModCraftingScreen = GUILayout.Window(
+                                                                                                          wid,
+                                                                                                          ModCraftingScreen,
+                                                                                                          InitModCraftingScreen,
+                                                                                                          ModName,
+                                                                                                          GUI.skin.window,
+                                                                                                          GUILayout.ExpandWidth(true),
+                                                                                                          GUILayout.MinWidth(ModScreenMinWidth),
+                                                                                                          GUILayout.MaxWidth(ModScreenMaxWidth),
+                                                                                                          GUILayout.ExpandHeight(true),
+                                                                                                          GUILayout.MinHeight(ModScreenMinHeight),
+                                                                                                          GUILayout.MaxHeight(ModScreenMaxHeight));
         }
 
         private void InitData()
@@ -339,14 +350,10 @@ namespace ModCrafting
 
         private void InitModCraftingScreen(int windowID)
         {
-            using (var modContentScope = new GUILayout.VerticalScope(
-                                                                                                          GUI.skin.box,
-                                                                                                          GUILayout.ExpandWidth(true),
-                                                                                                          GUILayout.MinWidth(ModScreenMinWidth),
-                                                                                                          GUILayout.MaxWidth(ModScreenMaxWidth),
-                                                                                                          GUILayout.ExpandHeight(true),
-                                                                                                          GUILayout.MinHeight(ModScreenMinHeight),
-                                                                                                          GUILayout.MaxHeight(ModScreenMaxHeight)))
+            ModScreenStartPositionX = ModCraftingScreen.x;
+            ModScreenStartPositionY = ModCraftingScreen.y;
+
+            using (var modContentScope = new GUILayout.VerticalScope(GUI.skin.box))
             {
                 ScreenMenuBox();
                 if (!IsMinimized)
@@ -420,14 +427,12 @@ namespace ModCrafting
         {
             if (!IsMinimized)
             {
-                ModScreenStartPositionX = ModCraftingScreen.x;
-                ModScreenStartPositionY = ModCraftingScreen.y;
-                ModCraftingScreen.Set(ModCraftingScreen.x, ModCraftingScreen.y, ModScreenMinWidth, ModScreenMinHeight);
+                ModCraftingScreen=new Rect(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenMinHeight);
                 IsMinimized = true;
             }
             else
             {
-                ModCraftingScreen.Set(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenTotalHeight);
+                ModCraftingScreen = new Rect(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenTotalHeight);
                 IsMinimized = false;
             }
             InitWindow();
@@ -462,7 +467,7 @@ namespace ModCrafting
                                                                                         || info.m_ID.ToString().ToLower().Contains(SearchItemKeyWord.Trim().ToLower())).ToList();
                     break;
                 case ItemFilter.Medical:
-                    filteredInfos =GetMedical();
+                    filteredInfos = GetMedical();
                     break;
                 case ItemFilter.Unique:
                     filteredInfos = GetUnique();
@@ -558,6 +563,13 @@ namespace ModCrafting
             List<Item> filteredItems;
             switch (filter)
             {
+                case ItemFilter.Keyword:
+                    filteredItems = CraftedItems.Where(craftedItem => craftedItem.m_Info.GetNameToDisplayLocalized().ToLower().Contains(SearchItemKeyWord.Trim().ToLower())
+                                                                                        || craftedItem.m_Info.m_ID.ToString().ToLower().Contains(SearchItemKeyWord.Trim().ToLower())).ToList();
+                    break;
+                case ItemFilter.Medical:
+                    filteredItems = CraftedItems.Where(craftedItem => GetMedical().Contains(craftedItem.m_Info)).ToList();
+                    break;
                 case ItemFilter.Unique:
                     filteredItems = CraftedItems.Where(craftedItem => GetUnique().Contains(craftedItem.m_Info)).ToList();
                     break;
@@ -668,7 +680,7 @@ namespace ModCrafting
                     GUI.color = Color.cyan;
                     GUILayout.Label("Choose an item filter. If you want to search for items on keyword, type it in the field bellow: ", GUI.skin.label);
                     GUI.color = Color.white;
-                    SearchItemKeyWord =  GUILayout.TextField(SearchItemKeyWord, GUI.skin.textField);
+                    SearchItemKeyWord = GUILayout.TextField(SearchItemKeyWord, GUI.skin.textField);
                     SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
                     if (GUILayout.Button($"Apply filter", GUI.skin.button))
                     {
