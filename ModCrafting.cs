@@ -20,12 +20,12 @@ namespace ModCrafting
         private static readonly string ModName = nameof(ModCrafting);
         private static readonly float ModScreenTotalWidth = 850f;
         private static readonly float ModScreenTotalHeight = 500f;
-        private static readonly float ModScreenMinWidth = 50f;
+        private static readonly float ModScreenMinWidth = 800f;
         private static readonly float ModScreenMaxWidth = 850f;
         private static readonly float ModScreenMinHeight = 50f;
         private static readonly float ModScreenMaxHeight = 550f;
-        private static float ModScreenStartPositionX { get; set; } = (Screen.width - ModScreenMaxWidth) % ModScreenTotalWidth;
-        private static float ModScreenStartPositionY { get; set; } = (Screen.height - ModScreenMaxHeight) % ModScreenTotalHeight;
+        private static float ModScreenStartPositionX { get; set; } = 0f;
+        private static float ModScreenStartPositionY { get; set; } = 0f;
         private static bool IsMinimized { get; set; } = false;
 
         private bool ShowUI = false;
@@ -36,7 +36,7 @@ namespace ModCrafting
         private static Player LocalPlayer;
         private static InventoryBackpack LocalInventoryBackpack;
 
-        public static Rect ModCraftingScreen = new Rect(0f, 0f, ModScreenTotalWidth, ModScreenTotalHeight);
+        public static Rect ModCraftingScreen = new Rect(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenTotalHeight);
         public static string SearchItemKeyWord = string.Empty;
         public static Vector2 FilteredItemsScrollViewPosition;
         public static string SelectedItemToCraftItemName;
@@ -61,9 +61,9 @@ namespace ModCrafting
         public static bool ShouldAddToBackpackOption = true;
         public static List<Item> CraftedItems = new List<Item>();
 
-        public bool DestroyTargetOption { get; private set; }
+        public bool DestroyTargetOption { get; private set; } = false;
 
-        public bool IsModActiveForMultiplayer { get; private set; }
+        public bool IsModActiveForMultiplayer { get; private set; } = false;
         public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
 
         public static string OnlyForSinglePlayerOrHostMessage() => $"Only available for single player or when host. Host can activate using ModManager.";
@@ -427,7 +427,7 @@ namespace ModCrafting
         {
             if (!IsMinimized)
             {
-                ModCraftingScreen=new Rect(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenMinHeight);
+                ModCraftingScreen = new Rect(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenMinHeight);
                 IsMinimized = true;
             }
             else
