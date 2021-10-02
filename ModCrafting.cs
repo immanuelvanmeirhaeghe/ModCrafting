@@ -95,6 +95,7 @@ namespace ModCrafting
 
         private static readonly string RuntimeConfigurationFile = Path.Combine(Application.dataPath.Replace("GH_Data", "Mods"), "RuntimeConfiguration.xml");
         private static KeyCode ModKeybindingId { get; set; } = KeyCode.Keypad1;
+        private static KeyCode ModDeleteKeybindingId { get; set; } = KeyCode.Delete;
         private KeyCode GetConfigurableKey(string buttonId)
         {
             KeyCode configuredKeyCode = default;
@@ -138,6 +139,7 @@ namespace ModCrafting
         {
             ModManager.ModManager.onPermissionValueChanged += ModManager_onPermissionValueChanged;
             ModKeybindingId = GetConfigurableKey(nameof(ModKeybindingId));
+            ModDeleteKeybindingId = GetConfigurableKey(nameof(ModDeleteKeybindingId));
         }
 
         private void ModManager_onPermissionValueChanged(bool optionValue)
@@ -209,7 +211,7 @@ namespace ModCrafting
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Home))
+            if (Input.GetKeyDown(ModKeybindingId))
             {
                 if (!ShowUI)
                 {
@@ -223,13 +225,13 @@ namespace ModCrafting
                 }
             }
 
-            if (Input.GetKeyDown(KeyCode.Delete))
+            if (Input.GetKeyDown(ModDeleteKeybindingId))
             {
                 DestroyTarget();
             }
         }
 
-        public void DestroyTarget()
+        private void DestroyTarget()
         {
             try
             {
@@ -243,18 +245,14 @@ namespace ModCrafting
                         }
                     }
                 }
-                else
-                {
-                    ShowHUDBigInfo(HUDBigInfoMessage(OnlyForSinglePlayerOrHostMessage(), MessageType.Warning, Color.yellow));
-                }
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}:{nameof(DestroyTarget)}] throws exception:\n{exc.Message}");
+                HandleException(exc, nameof(DestroyTarget));
             }
         }
 
-        public void DestroyOnHit(RaycastHit hitInfo)
+        private void DestroyOnHit(RaycastHit hitInfo)
         {
             try
             {
@@ -269,15 +267,11 @@ namespace ModCrafting
                             ShowConfirmDestroyDialog();
                         }
                     }
-                    else
-                    {
-                        ShowHUDBigInfo(HUDBigInfoMessage(OnlyForSinglePlayerOrHostMessage(), MessageType.Warning, Color.yellow));
-                    }
                 }
             }
             catch (Exception exc)
             {
-                ModAPI.Log.Write($"[{ModName}:{nameof(DestroyOnHit)}] throws exception:\n{exc.Message}");
+                HandleException(exc, nameof(DestroyOnHit));
             }
         }
 
@@ -380,18 +374,17 @@ namespace ModCrafting
         private void InitWindow()
         {
             int wid = GetHashCode();
-            ModCraftingScreen = GUILayout.Window(
-                                                                                                          wid,
-                                                                                                          ModCraftingScreen,
-                                                                                                          InitModCraftingScreen,
-                                                                                                          ModName,
-                                                                                                          GUI.skin.window,
-                                                                                                          GUILayout.ExpandWidth(true),
-                                                                                                          GUILayout.MinWidth(ModScreenMinWidth),
-                                                                                                          GUILayout.MaxWidth(ModScreenMaxWidth),
-                                                                                                          GUILayout.ExpandHeight(true),
-                                                                                                          GUILayout.MinHeight(ModScreenMinHeight),
-                                                                                                          GUILayout.MaxHeight(ModScreenMaxHeight));
+            ModCraftingScreen = GUILayout.Window(wid,
+                                                                                            ModCraftingScreen,
+                                                                                            InitModCraftingScreen,
+                                                                                            ModName,
+                                                                                            GUI.skin.window,
+                                                                                            GUILayout.ExpandWidth(true),
+                                                                                            GUILayout.MinWidth(ModScreenMinWidth),
+                                                                                            GUILayout.MaxWidth(ModScreenMaxWidth),
+                                                                                            GUILayout.ExpandHeight(true),
+                                                                                            GUILayout.MinHeight(ModScreenMinHeight),
+                                                                                            GUILayout.MaxHeight(ModScreenMaxHeight));
         }
 
         private void InitData()
@@ -433,9 +426,10 @@ namespace ModCrafting
             {
                 using (var optionsScope = new GUILayout.VerticalScope(GUI.skin.box))
                 {
-                    GUILayout.Label($"To toggle the mod main UI, press [{ModKeybindingId}]", GUI.skin.label);
+                    GUILayout.Label($"To toggle the main mod UI, press [{ModKeybindingId}]", GUI.skin.label);
 
                     MultiplayerOptionBox();
+                    ModKeybindingOptionBox();
                     ConstructionsOptionBox();
                 }
             }
@@ -496,6 +490,17 @@ namespace ModCrafting
             }
         }
 
+        private void ModKeybindingOptionBox()
+        {
+            using (var modkeybindingScope = new GUILayout.VerticalScope(GUI.skin.box))
+            {
+                GUI.color = DefaultGuiColor;
+                GUILayout.Label("Mod keybinding options: ", GUI.skin.label);
+                GUILayout.Label($"To select a item to craft, press [{ModKeybindingId}]", GUI.skin.label);
+                GUILayout.Label($"To destroy the target on mouse pointer, press [{ModDeleteKeybindingId}]", GUI.skin.label);
+            }
+        }
+
         private void ConstructionsOptionBox()
         {
             try
@@ -504,7 +509,7 @@ namespace ModCrafting
                 {
                     GUI.color = DefaultGuiColor;
                     GUILayout.Label($"Construction options: ", GUI.skin.label);
-                    DestroyTargetOption = GUILayout.Toggle(DestroyTargetOption, $"Use [DELETE] to destroy target?", GUI.skin.toggle);
+                    DestroyTargetOption = GUILayout.Toggle(DestroyTargetOption, $"Use [{ModDeleteKeybindingId}] to destroy target?", GUI.skin.toggle);
                 }
             }
             catch (Exception exc)
@@ -898,7 +903,7 @@ namespace ModCrafting
                     }
                     else
                     {
-                        SelectedItemToCraft = LocalItemsManager.CreateItem(itemID, true, Vector3.zero, Quaternion.identity);
+                        SelectedItemToCraft = LocalItemsManager.CreateItem(itemID, true, LocalPlayer.transform.position + LocalPlayer.transform.forward * 1f, LocalPlayer.transform.rotation);
                     }
 
                     if (SelectedItemToCraft != null)
