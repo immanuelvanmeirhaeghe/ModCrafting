@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("ModAPI.ModCrafting")]
-[assembly: AssemblyDescription("ModCrafting is a mod for Green Hell, that allows a player to craft any game item without the needed materials and to destroy any item pointed at with the mouse. Press Keypad1 (default) or the key configurable in ModAPI to open the mod screen. When enabled, press KeypadMinus (default) or the key configurable in ModAPI to delete mouse target.")]
+[assembly: AssemblyDescription("ModCrafting is a mod for Green Hell, that allows a player to craft any game item without the needed materials and to destroy any selected item within player range or pointed at with the mouse. Press Keypad1 (default) or the key configurable in ModAPI to open the mod screen. When enabled, press KeypadMinus (default) or the key configurable in ModAPI to delete mouse target.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("[Dragon Legion]Immaanuel")]
 [assembly: AssemblyProduct("ModAPI.ModCrafting")]
@@ -29,5 +29,5 @@ using System.Runtime.InteropServices;
 //      Build Number
 //      Revision
 //
-[assembly: AssemblyVersion("1.0.3.8")]
-[assembly: AssemblyFileVersion("1.0.3.8")]
+[assembly: AssemblyVersion("1.0.3.9")]
+[assembly: AssemblyFileVersion("1.0.3.9")]

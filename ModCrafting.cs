@@ -11,8 +11,9 @@ using UnityEngine.UI;
 namespace ModCrafting
 {
     /// <summary>
-    /// ModCrafting is a mod for Green Hell, that allows a player to craft any game item
-    /// without the needed materials and to destroy any item pointed at with the mouse.
+    /// ModCrafting is a mod for Green Hell, that allows a player
+    ///  to craft any game item without the needed materials and
+    ///  to destroy any selected item within player range or pointed at with the mouse.
     /// Press Keypad1 (default) or the key configurable in ModAPI to open the mod screen.
     /// When enabled, press KeypadMinus (default) or the key configurable in ModAPI to delete mouse target.
     /// </summary>
@@ -48,6 +49,9 @@ namespace ModCrafting
         public static ItemID SelectedItemToCraftItemID;
         public static Item SelectedItemToCraft;
         public static GameObject SelectedGameObjectToDestroy = null;
+        public static List<GameObject> ItemsInPlayerActionRange;
+        public static Vector2 ItemsInRangeScrollViewPosition { get; private set; }
+        public static int SelectedGameObjectToDestroyIndex { get; private set; }
         public static string SelectedGameObjectToDestroyName = string.Empty;
         public static List<string> DestroyableObjectNames { get; set; } = new List<string> {
                                                                                 "tree", "plant", "leaf", "stone", "seat", "bag", "beam", "corrugated", "anaconda",  "dead",
@@ -99,6 +103,8 @@ namespace ModCrafting
         private static readonly string RuntimeConfigurationFile = Path.Combine(Application.dataPath.Replace("GH_Data", "Mods"), "RuntimeConfiguration.xml");
         private static KeyCode ModKeybindingId { get; set; } = KeyCode.Keypad1;
         private static KeyCode ModDeleteKeybindingId { get; set; } = KeyCode.KeypadMinus;
+
+
         private KeyCode GetConfigurableKey(string buttonId)
         {
             KeyCode configuredKeyCode = default;
@@ -310,7 +316,7 @@ namespace ModCrafting
                 {
                     if (SelectedItemToDestroy != null || IsDestroyable(SelectedGameObjectToDestroy))
                     {
-                        if (SelectedItemToDestroy != null && !SelectedItemToDestroy.IsPlayer() && !SelectedItemToDestroy.IsAI() && !SelectedItemToDestroy.IsHumanAI())
+                        if (SelectedItemToDestroy != null && !SelectedItemToDestroy.m_Info.IsConstruction() && !SelectedItemToDestroy.IsPlayer() && !SelectedItemToDestroy.IsAI() && !SelectedItemToDestroy.IsHumanAI())
                         {
                             LocalItemsManager.AddItemToDestroy(SelectedItemToDestroy);
                         }
@@ -528,6 +534,7 @@ namespace ModCrafting
 
         private void DestroyItemsBox()
         {
+            DestroySelectedItemInPlayerRangeBox();
             using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
             {
                 GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} crafted using this mod.", GUI.skin.label);
@@ -535,6 +542,105 @@ namespace ModCrafting
                 {
                     ShowConfirmDestroyDialog(SelectedFilter.ToString().ToLower());
                 }
+            }
+        }
+
+        private void DestroySelectedItemInPlayerRangeBox()
+        {
+            try
+            {
+                using (var actionScope = new GUILayout.VerticalScope(GUI.skin.box))
+                {
+                    GUILayout.Label($"Click to destroy selected item within player action range.", GUI.skin.label);
+
+                    ItemsInPlayerRangeScrollView();
+
+                    if (GUILayout.Button($"Destroy selected", GUI.skin.button, GUILayout.MaxWidth(200f)))
+                    {
+                        OnClickDestroySelectedItemInRangeButton();
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(DestroySelectedItemInPlayerRangeBox));
+            }
+        }
+
+        private void ItemsInPlayerRangeScrollView()
+        {
+            ItemsInRangeScrollViewPosition = GUILayout.BeginScrollView(ItemsInRangeScrollViewPosition, GUI.skin.scrollView, GUILayout.MinHeight(300f));
+            string[] inRangeItemNames = GetItemNamesInRange(LocalPlayer.GetWorldPosition(), 10f);
+            if (inRangeItemNames != null)
+            {
+                SelectedGameObjectToDestroyIndex = GUILayout.SelectionGrid(SelectedGameObjectToDestroyIndex, inRangeItemNames, 3, GUI.skin.button);
+            }
+            GUILayout.EndScrollView();
+        }
+
+        private string[] GetItemNamesInRange(Vector3 pos, float radius)
+        {
+            try
+            {
+                List<string> names = default;
+
+               ItemsInPlayerActionRange = GetItemsInPlayerActionRange(pos, radius);
+                if (ItemsInPlayerActionRange != null)
+                {
+                    names = new List<string>();
+                    foreach (var go in ItemsInPlayerActionRange)
+                    {
+                        Item component = go.GetComponent<Item>();
+                        if (component != null)
+                        {
+                            names.Add(component.GetName().Replace("_", " "));
+                        }
+                    }
+                }
+
+                return names?.OrderBy(itemName => itemName).ToArray();
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(GetItemNamesInRange));
+                return null;
+            }
+        }
+
+        private List<GameObject> GetItemsInPlayerActionRange(Vector3 pos, float radius)
+        {
+            try
+            {
+                Bounds bounds = default(Bounds);
+                Terrain[] array = FindObjectsOfType<Terrain>();
+                for (int i = 0; i < array.Length; i++)
+                {
+                    Terrain terrain = array[i];
+                    if (i == 0)
+                    {
+                        Vector3 vector2 = (bounds.min = (bounds.max = terrain.GetPosition()));
+                    }
+                    else
+                    {
+                        bounds.Encapsulate(terrain.GetPosition());
+                    }
+                    if (!(terrain.terrainData == null))
+                    {
+                        bounds.Encapsulate(terrain.terrainData.size);
+                    }
+                }
+                if (array.Length == 0)
+                {
+                    return null;
+                }
+                var m_QuadTree = new QuadTree(bounds.min.x, bounds.min.z, bounds.size.x, bounds.size.z, 100, 100);
+
+                return m_QuadTree.GetObjectsInRadius(pos, radius);
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(GetItemsInPlayerActionRange));
+                return null;
             }
         }
 
@@ -882,6 +988,34 @@ namespace ModCrafting
             catch (Exception exc)
             {
                 HandleException(exc, nameof(OnClickCraftSelectedItemButton));
+            }
+        }
+
+        private void OnClickDestroySelectedItemInRangeButton()
+        {
+            try
+            {
+                string[] inRangeItemNames = GetItemNamesInRange(LocalPlayer.GetWorldPosition(), 10f);
+                if (inRangeItemNames != null)
+                {
+                    SelectedGameObjectToDestroyName = inRangeItemNames[SelectedGameObjectToDestroyIndex].Replace(" ", "_");
+                    if (!string.IsNullOrEmpty(SelectedGameObjectToDestroyName))
+                    {
+                        if (ItemsInPlayerActionRange != null)
+                        {
+                            SelectedGameObjectToDestroy = ItemsInPlayerActionRange.Find(i => i.GetComponent<Item>()?.GetName()== SelectedGameObjectToDestroyName);
+                            if (SelectedGameObjectToDestroy != null)
+                            {
+                                SelectedItemToDestroy = SelectedGameObjectToDestroy?.GetComponent<Item>();
+                                ShowConfirmDestroyDialog(SelectedGameObjectToDestroyName);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(OnClickDestroySelectedItemInRangeButton));
             }
         }
 
