@@ -14,6 +14,7 @@ namespace ModCrafting
     /// ModCrafting is a mod for Green Hell, that allows a player to craft any game item
     /// without the needed materials and to destroy any item pointed at with the mouse.
     /// Press Keypad1 (default) or the key configurable in ModAPI to open the mod screen.
+    /// When enabled, press KeypadMinus (default) or the key configurable in ModAPI to delete mouse target.
     /// </summary>
     public class ModCrafting : MonoBehaviour, IYesNoDialogOwner
     {
@@ -97,7 +98,7 @@ namespace ModCrafting
 
         private static readonly string RuntimeConfigurationFile = Path.Combine(Application.dataPath.Replace("GH_Data", "Mods"), "RuntimeConfiguration.xml");
         private static KeyCode ModKeybindingId { get; set; } = KeyCode.Keypad1;
-        private static KeyCode ModDeleteKeybindingId { get; set; } = KeyCode.Delete;
+        private static KeyCode ModDeleteKeybindingId { get; set; } = KeyCode.KeypadMinus;
         private KeyCode GetConfigurableKey(string buttonId)
         {
             KeyCode configuredKeyCode = default;

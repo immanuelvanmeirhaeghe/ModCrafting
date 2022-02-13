@@ -1,10 +1,26 @@
 <Mod ID="ModCrafting">
-  <Compatible>1.8.1</Compatible>
+  <Compatible>2.1.8</Compatible>
+  <Button Standard="NumPad1" ID="ModKeybindingId">
+    <Name>
+      <EN>ModKeybindingId</EN>
+    </Name>
+    <Description>
+      <EN>ModKeybindingId</EN>
+    </Description>
+  </Button>
+  <Button Standard="Subtract" ID="ModDeleteKeybindingId">
+    <Name>
+      <EN>ModDeleteKeybindingId</EN>
+    </Name>
+    <Description>
+      <EN>ModDeleteKeybindingId</EN>
+    </Description>
+  </Button>
   <Name>
     <EN>ModCrafting</EN>
   </Name>
   <Description>
-    <EN>ModCrafting is a mod for Green Hell that allows a player to craft a couple of specific items.</EN>
+    <EN>ModCrafting is a mod for Green Hell, that allows a player to craft any game item without the needed materials and to destroy any item pointed at with the mouse. Press Keypad1 (default) or the key configurable in ModAPI to open the mod screen.</EN>
   </Description>
-  <Version>1.0.3.5</Version>
+  <Version>1.0.3.8</Version>
 </Mod>
