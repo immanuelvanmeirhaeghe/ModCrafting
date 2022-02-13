@@ -49,12 +49,14 @@ namespace ModCrafting
         public static GameObject SelectedGameObjectToDestroy = null;
         public static string SelectedGameObjectToDestroyName = string.Empty;
         public static List<string> DestroyableObjectNames { get; set; } = new List<string> {
-                                                                                "tree", "plant", "leaf", "stone", "seat", "bag", "beam", "corrugated", "anaconda",
+                                                                                "tree", "plant", "leaf", "stone", "seat", "bag", "beam", "corrugated", "anaconda",  "dead",
                                                                                 "metal", "board", "cardboard", "plank", "plastic", "small", "tarp", "oil", "sock",
                                                                                 "cartel", "military", "tribal", "village", "ayahuasca", "gas", "boat", "ship",
                                                                                 "bridge", "chair", "stove", "barrel", "tank", "jerrycan", "microwave",
                                                                                 "sprayer", "shelf", "wind", "air", "bottle", "trash", "lab", "table", "diving",
-                                                                                "roof", "floor", "hull", "frame", "cylinder", "wire", "wiretap", "generator"
+                                                                                "roof", "floor", "hull", "frame", "cylinder", "wire", "wiretap", "generator",
+                                                                                "platform", "walk", "car", "mattr", "wing", "plane", "hang", "phallus", "bush",
+                                                                                "lod0"
                                                                         };
         public static Item SelectedItemToDestroy = null;
         public static string SelectedFilterName;
@@ -260,11 +262,14 @@ namespace ModCrafting
                 {
                     if (DestroyTargetOption)
                     {
-                        GameObject go = hitInfo.collider.transform.gameObject;
-                        if (go != null)
+                        SelectedGameObjectToDestroy = hitInfo.collider.transform.gameObject;
+                        if (SelectedGameObjectToDestroy != null)
                         {
-                            SelectedGameObjectToDestroy = go.gameObject;
-                            ShowConfirmDestroyDialog();
+                            SelectedItemToDestroy = SelectedGameObjectToDestroy?.GetComponent<Item>();
+                            SelectedGameObjectToDestroyName = SelectedItemToDestroy?.m_Info != null
+                                                                                                            ? SelectedItemToDestroy?.m_Info?.GetNameToDisplayLocalized()
+                                                                                                            : GreenHellGame.Instance.GetLocalization().Get(SelectedGameObjectToDestroy?.name);
+                            ShowConfirmDestroyDialog(SelectedGameObjectToDestroyName);
                         }
                     }
                 }
@@ -275,13 +280,20 @@ namespace ModCrafting
             }
         }
 
-        private void ShowConfirmDestroyDialog()
+        private void ShowConfirmDestroyDialog(string itemToDestroyName)
         {
-            EnableCursor(true);
-            string description = $"Are you sure you want to destroy selected { (SelectedGameObjectToDestroy != null ? SelectedGameObjectToDestroy.name : SelectedFilter.ToString().ToLower()) }?";
-            YesNoDialog destroyYesNoDialog = GreenHellGame.GetYesNoDialog();
-            destroyYesNoDialog.Show(this, DialogWindowType.YesNo, $"{ModName} Info", description, true);
-            destroyYesNoDialog.gameObject.SetActive(true);
+            try
+            {
+                EnableCursor(true);
+                string description = $"Are you sure you want to destroy { itemToDestroyName }?";
+                YesNoDialog destroyYesNoDialog = GreenHellGame.GetYesNoDialog();
+                destroyYesNoDialog.Show(this, DialogWindowType.YesNo, $"{ModName} Info", description, true, false);
+                destroyYesNoDialog.gameObject.SetActive(true);
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(ShowConfirmDestroyDialog));
+            }
         }
 
         private void ToggleShowUI()
@@ -295,11 +307,6 @@ namespace ModCrafting
             {
                 if (SelectedGameObjectToDestroy != null)
                 {
-                    SelectedItemToDestroy = SelectedGameObjectToDestroy.GetComponent<Item>();
-                    SelectedGameObjectToDestroyName = SelectedItemToDestroy != null && SelectedItemToDestroy.m_Info != null
-                                                                                                    ? SelectedItemToDestroy.m_Info.GetNameToDisplayLocalized()
-                                                                                                    : GreenHellGame.Instance.GetLocalization().Get(SelectedGameObjectToDestroy.name);
-
                     if (SelectedItemToDestroy != null || IsDestroyable(SelectedGameObjectToDestroy))
                     {
                         if (SelectedItemToDestroy != null && !SelectedItemToDestroy.IsPlayer() && !SelectedItemToDestroy.IsAI() && !SelectedItemToDestroy.IsHumanAI())
@@ -314,7 +321,7 @@ namespace ModCrafting
                     }
                     else
                     {
-                        ShowHUDBigInfo(HUDBigInfoMessage(ItemNotDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Error, Color.red));
+                        ShowHUDBigInfo(HUDBigInfoMessage(ItemNotDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Warning, Color.yellow));
                     }
                 }
                 else if (CraftedItems != null)
@@ -496,7 +503,7 @@ namespace ModCrafting
             {
                 GUI.color = DefaultGuiColor;
                 GUILayout.Label("Mod keybinding options: ", GUI.skin.label);
-                GUILayout.Label($"To select a item to craft, press [{ModKeybindingId}]", GUI.skin.label);
+                GUILayout.Label($"To select an item to craft, press [{ModKeybindingId}]", GUI.skin.label);
                 GUILayout.Label($"To destroy the target on mouse pointer, press [{ModDeleteKeybindingId}]", GUI.skin.label);
             }
         }
@@ -525,7 +532,7 @@ namespace ModCrafting
                 GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} crafted using this mod.", GUI.skin.label);
                 if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
                 {
-                    ShowConfirmDestroyDialog();
+                    ShowConfirmDestroyDialog(SelectedFilter.ToString().ToLower());
                 }
             }
         }
