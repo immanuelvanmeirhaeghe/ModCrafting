@@ -316,7 +316,7 @@ namespace ModCrafting
                 {
                     if (SelectedItemToDestroy != null || IsDestroyable(SelectedGameObjectToDestroy))
                     {
-                        if (SelectedItemToDestroy != null && !SelectedItemToDestroy.m_Info.IsConstruction() && !SelectedItemToDestroy.IsPlayer() && !SelectedItemToDestroy.IsAI() && !SelectedItemToDestroy.IsHumanAI())
+                        if (SelectedItemToDestroy != null && !SelectedItemToDestroy.IsPlayer() && !SelectedItemToDestroy.IsAI() && !SelectedItemToDestroy.IsHumanAI())
                         {
                             LocalItemsManager.AddItemToDestroy(SelectedItemToDestroy);
                         }
@@ -535,13 +535,28 @@ namespace ModCrafting
         private void DestroyItemsBox()
         {
             DestroySelectedItemInPlayerRangeBox();
-            using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
+            DestroyFilteredItemsBox();
+        }
+
+        private void DestroyFilteredItemsBox()
+        {
+            try
             {
-                GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} crafted using this mod.", GUI.skin.label);
-                if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
+                using (var actionScope = new GUILayout.VerticalScope(GUI.skin.box))
                 {
-                    ShowConfirmDestroyDialog(SelectedFilter.ToString().ToLower());
+                    using (var actionBScope = new GUILayout.HorizontalScope(GUI.skin.box))
+                    {
+                        GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} crafted using this mod.", GUI.skin.label);
+                        if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
+                        {
+                            ShowConfirmDestroyDialog(SelectedFilter.ToString().ToLower());
+                        }
+                    }
                 }
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(DestroyFilteredItemsBox));
             }
         }
 
@@ -569,22 +584,26 @@ namespace ModCrafting
 
         private void ItemsInPlayerRangeScrollView()
         {
-            ItemsInRangeScrollViewPosition = GUILayout.BeginScrollView(ItemsInRangeScrollViewPosition, GUI.skin.scrollView, GUILayout.MinHeight(300f));
-            string[] inRangeItemNames = GetItemNamesInRange(LocalPlayer.GetWorldPosition(), 10f);
-            if (inRangeItemNames != null)
+            ItemsInRangeScrollViewPosition = GUILayout.BeginScrollView(ItemsInRangeScrollViewPosition, GUI.skin.scrollView, GUILayout.MinHeight(100f));
+            string[] inRangeItemNames = GetItemNamesInRange(10f);
+            if (inRangeItemNames != null && inRangeItemNames.Length > 0)
             {
                 SelectedGameObjectToDestroyIndex = GUILayout.SelectionGrid(SelectedGameObjectToDestroyIndex, inRangeItemNames, 3, GUI.skin.button);
+            }
+            else
+            {
+                GUILayout.Label($"There aren't any items found within 10 feet player action range.", GUI.skin.label);
             }
             GUILayout.EndScrollView();
         }
 
-        private string[] GetItemNamesInRange(Vector3 pos, float radius)
+        private string[] GetItemNamesInRange(float range)
         {
             try
             {
                 List<string> names = default;
 
-               ItemsInPlayerActionRange = GetItemsInPlayerActionRange(pos, radius);
+               ItemsInPlayerActionRange = GetItemsInPlayerActionRange(range);
                 if (ItemsInPlayerActionRange != null)
                 {
                     names = new List<string>();
@@ -607,35 +626,28 @@ namespace ModCrafting
             }
         }
 
-        private List<GameObject> GetItemsInPlayerActionRange(Vector3 pos, float radius)
+        private List<GameObject> GetItemsInPlayerActionRange(float range)
         {
             try
             {
-                Bounds bounds = default(Bounds);
-                Terrain[] array = FindObjectsOfType<Terrain>();
-                for (int i = 0; i < array.Length; i++)
+                List<GameObject> list = new List<GameObject>();
+               var infos = LocalItemsManager.GetAllInfos();
+                foreach (var kvp in infos)
                 {
-                    Terrain terrain = array[i];
-                    if (i == 0)
+                    GameObject goInRange = MainLevel.Instance.FindObject(kvp.Value.m_Item.name);
+                    if (goInRange != null)
                     {
-                        Vector3 vector2 = (bounds.min = (bounds.max = terrain.GetPosition()));
-                    }
-                    else
-                    {
-                        bounds.Encapsulate(terrain.GetPosition());
-                    }
-                    if (!(terrain.terrainData == null))
-                    {
-                        bounds.Encapsulate(terrain.terrainData.size);
+                        bool inRange = MainLevel.Instance.IsObjectInRange(LocalPlayer.gameObject, goInRange, range);
+                        if (inRange)
+                        {
+                            if (!list.Contains(goInRange))
+                            {
+                                list.Add(goInRange);
+                            }
+                        }
                     }
                 }
-                if (array.Length == 0)
-                {
-                    return null;
-                }
-                var m_QuadTree = new QuadTree(bounds.min.x, bounds.min.z, bounds.size.x, bounds.size.z, 100, 100);
-
-                return m_QuadTree.GetObjectsInRadius(pos, radius);
+                return list;
             }
             catch (Exception exc)
             {
@@ -995,7 +1007,7 @@ namespace ModCrafting
         {
             try
             {
-                string[] inRangeItemNames = GetItemNamesInRange(LocalPlayer.GetWorldPosition(), 10f);
+                string[] inRangeItemNames = GetItemNamesInRange(10f);
                 if (inRangeItemNames != null)
                 {
                     SelectedGameObjectToDestroyName = inRangeItemNames[SelectedGameObjectToDestroyIndex].Replace(" ", "_");

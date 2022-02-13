@@ -20,7 +20,7 @@
     <EN>ModCrafting</EN>
   </Name>
   <Description>
-    <EN>ModCrafting is a mod for Green Hell, that allows a player to craft any game item without the needed materials and to destroy any item pointed at with the mouse. Press Keypad1 (default) or the key configurable in ModAPI to open the mod screen.</EN>
+    <EN>ModCrafting is a mod for Green Hell, that allows a player to craft any game item without the needed materials and to destroy any selected item within player range or pointed at with the mouse. Press Keypad1 (default) or the key configurable in ModAPI to open the mod screen. When enabled, press KeypadMinus (default) or the key configurable in ModAPI to delete mouse target.</EN>
   </Description>
-  <Version>1.0.3.8</Version>
+  <Version>1.0.3.9</Version>
 </Mod>
