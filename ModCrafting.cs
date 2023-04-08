@@ -103,8 +103,6 @@ namespace ModCrafting
         private static readonly string RuntimeConfigurationFile = Path.Combine(Application.dataPath.Replace("GH_Data", "Mods"), "RuntimeConfiguration.xml");
         private static KeyCode ModKeybindingId { get; set; } = KeyCode.Keypad1;
         private static KeyCode ModDeleteKeybindingId { get; set; } = KeyCode.KeypadMinus;
-
-
         private KeyCode GetConfigurableKey(string buttonId)
         {
             KeyCode configuredKeyCode = default;
@@ -129,17 +127,35 @@ namespace ModCrafting
                     }
                 }
 
-                configuredKeybinding = configuredKeybinding?.Replace("NumPad", "Keypad").Replace("Oem", "");
+                if (!string.IsNullOrEmpty(configuredKeybinding))
+                {
+                    configuredKeyCode = EnumUtils<KeyCode>.GetValue(configuredKeybinding);
+                }
+                else
+                {
+                    if (buttonId == nameof(ModKeybindingId))
+                    {
+                        configuredKeyCode = ModKeybindingId;
+                    }
+                    if (buttonId == nameof(ModDeleteKeybindingId))
+                    {
+                        configuredKeyCode = ModDeleteKeybindingId;
+                    }
+                }
 
-                configuredKeyCode = (KeyCode)(!string.IsNullOrEmpty(configuredKeybinding)
-                                                            ? Enum.Parse(typeof(KeyCode), configuredKeybinding)
-                                                            : GetType().GetProperty(buttonId)?.GetValue(this));
                 return configuredKeyCode;
             }
             catch (Exception exc)
             {
                 HandleException(exc, nameof(GetConfigurableKey));
-                configuredKeyCode = (KeyCode)(GetType().GetProperty(buttonId)?.GetValue(this));
+                if (buttonId == nameof(ModKeybindingId))
+                {
+                    configuredKeyCode = ModKeybindingId;
+                }
+                if (buttonId == nameof(ModDeleteKeybindingId))
+                {
+                    configuredKeyCode = ModDeleteKeybindingId;
+                }
                 return configuredKeyCode;
             }
         }
