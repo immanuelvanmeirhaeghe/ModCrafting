@@ -1,5 +1,5 @@
 <Mod ID="ModCrafting">
-  <Compatible>2.1.8</Compatible>
+  <Compatible>2.4.2</Compatible>
   <Button Standard="NumPad1" ID="ModKeybindingId">
     <Name>
       <EN>ModKeybindingId</EN>

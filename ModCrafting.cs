@@ -550,7 +550,7 @@ namespace ModCrafting
 
         private void DestroyItemsBox()
         {
-            DestroySelectedItemInPlayerRangeBox();
+            //DestroySelectedItemInPlayerRangeBox();
             DestroyFilteredItemsBox();
         }
 
