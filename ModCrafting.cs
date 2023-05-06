@@ -63,7 +63,6 @@ namespace ModCrafting
         private static InventoryBackpack LocalInventoryBackpack;
         private static StylingManager LocalStylingManager;
 
-
         public string SearchItemKeyWord = string.Empty;
         public Vector2 FilteredItemsScrollViewPosition;
         public string SelectedItemToCraftItemName;
@@ -75,16 +74,7 @@ namespace ModCrafting
         public Vector2 ItemsInRangeScrollViewPosition { get; private set; }
         public int SelectedGameObjectToDestroyIndex { get; private set; }
         public string SelectedGameObjectToDestroyName = string.Empty;
-        public List<string> DestroyableObjectNames { get; set; } = new List<string> {
-                                                                                "tree", "plant", "leaf", "stone", "seat", "bag", "beam", "corrugated", "anaconda",  "dead",
-                                                                                "metal", "board", "cardboard", "plank", "plastic", "small", "tarp", "oil", "sock",
-                                                                                "cartel", "military", "tribal", "village", "ayahuasca", "gas", "boat", "ship",
-                                                                                "bridge", "chair", "stove", "barrel", "tank", "jerrycan", "microwave",
-                                                                                "sprayer", "shelf", "wind", "air", "bottle", "trash", "lab", "table", "diving",
-                                                                                "roof", "floor", "hull", "frame", "cylinder", "wire", "wiretap", "generator",
-                                                                                "platform", "walk", "car", "mattr", "wing", "plane", "hang", "phallus", "bush",
-                                                                                "lod0"
-                                                                        };
+        
         public Item SelectedItemToDestroy = null;
         public string SelectedFilterName;
         public int SelectedFilterIndex;
@@ -118,6 +108,7 @@ namespace ModCrafting
 
         public KeyCode ShortcutKey { get; set; } = KeyCode.Alpha8;
         public KeyCode DeleteShortcutKey { get; set; } = KeyCode.KeypadMinus;
+        public bool AlsoDestroyCraftedItems { get; private set; }
 
         protected virtual void Start()
         {
@@ -632,28 +623,8 @@ namespace ModCrafting
         protected virtual void DestroySelectedItem()
         {
             try
-            {
-                if (SelectedGameObjectToDestroy != null)
-                {
-                    if (SelectedItemToDestroy != null || IsDestroyable(SelectedGameObjectToDestroy))
-                    {
-                        if (SelectedItemToDestroy != null && !SelectedItemToDestroy.IsPlayer() && !SelectedItemToDestroy.IsAI() && !SelectedItemToDestroy.IsHumanAI())
-                        {
-                            LocalItemsManager.AddItemToDestroy(SelectedItemToDestroy);
-                        }
-                        else
-                        {
-                            Destroy(SelectedGameObjectToDestroy);
-                        }
-                        ShowHUDBigInfo(HUDBigInfoMessage(ItemDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Info, LocalStylingManager.DefaultEnabledColor));
-                    }
-                    else
-                    {
-                        ShowHUDBigInfo(HUDBigInfoMessage(ItemNotDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Warning, Color.yellow));
-                    }
-                }
-                
-                if (CraftedItems != null)
+            {                
+                if (AlsoDestroyCraftedItems && CraftedItems != null)
                 {
                     List<Item> toDestroy = GetCraftedItems(SelectedFilter);
                     if (toDestroy != null)
@@ -666,16 +637,39 @@ namespace ModCrafting
                     }
                     else
                     {
-                        ShowHUDBigInfo(HUDBigInfoMessage(ItemNotSelectedMessage(), MessageType.Warning, Color.yellow));
+                        ShowHUDBigInfo(HUDBigInfoMessage(ItemNotSelectedMessage(), MessageType.Warning,LocalStylingManager.DefaultAttentionColor));
                     }
+                    AlsoDestroyCraftedItems = false;
                 }
                 else
                 {
-                    ShowHUDBigInfo(HUDBigInfoMessage(ItemNotSelectedMessage(), MessageType.Warning, Color.yellow));
-                }
+                    if (SelectedGameObjectToDestroy != null)
+                    {
+                        if (SelectedItemToDestroy != null || IsDestroyable(SelectedGameObjectToDestroy))
+                        {
+                            if (SelectedItemToDestroy != null && !SelectedItemToDestroy.IsPlayer() && !SelectedItemToDestroy.IsAI() && !SelectedItemToDestroy.IsHumanAI())
+                            {
+                                LocalItemsManager.AddItemToDestroy(SelectedItemToDestroy);
+                            }
+                            else
+                            {
+                                Destroy(SelectedGameObjectToDestroy);
+                            }
+                            ShowHUDBigInfo(HUDBigInfoMessage(ItemDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Info, LocalStylingManager.DefaultEnabledColor));
+                        }
+                        else
+                        {
+                            ShowHUDBigInfo(HUDBigInfoMessage(ItemNotDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Warning, LocalStylingManager.DefaultAttentionColor));
+                        }
+                    }
+                }            
             }
             catch (Exception exc)
             {
+                if (AlsoDestroyCraftedItems)
+                {
+                    AlsoDestroyCraftedItems = false;
+                }
                 HandleException(exc, nameof(DestroySelectedItem));
             }
         }
@@ -688,7 +682,7 @@ namespace ModCrafting
                 {
                     return false;
                 }
-                return DestroyableObjectNames.Any(destroyableObjectName => go.name.ToLower().Contains(destroyableObjectName));
+                return true;
             }
             catch (Exception exc)
             {
@@ -711,9 +705,11 @@ namespace ModCrafting
                 {
                     using ( new GUILayout.HorizontalScope(GUI.skin.box))
                     {
-                        GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} crafted using this mod.", LocalStylingManager.TextLabel);
+                        GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} crafted using this mod.", LocalStylingManager.TextLabel);                     
+
                         if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.Width(150f)))
                         {
+                            AlsoDestroyCraftedItems = true;
                             ShowConfirmDestroyDialog(SelectedFilter.ToString().ToLower());
                         }
                     }
@@ -963,18 +959,18 @@ namespace ModCrafting
 
                     GUILayout.Label("Choose an item filter.", LocalStylingManager.TextLabel);
                    
-                    SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, LocalStylingManager.ColoredSelectedGridButton(_SelectedFilterIndex == SelectedFilterIndex));
+                    SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, LocalStylingManager.ColoredSelectedGridButton(_SelectedFilterIndex != SelectedFilterIndex));
 
                     using (new GUILayout.HorizontalScope(GUI.skin.box))
                     {
                         GUILayout.Label("Click to activate selected filter: ", LocalStylingManager.TextLabel);
-                        if (GUILayout.Button($"[Apply]", GUI.skin.button, GUILayout.Width(150f)))
+                        if (GUILayout.Button($"Apply filter", GUI.skin.button, GUILayout.Width(150f)))
                         {
                             OnClickApplyFilterButton();
                         }
                     }
 
-                    GUILayout.Label("If you want to search for items on keyword, first choose Keyword as filter and click [Apply]. Then, start typing in the keyword to filter on below: ", LocalStylingManager.ColoredCommentLabel(LocalStylingManager.DefaultAttentionColor));
+                    GUILayout.Label("If you want to search for items on keyword, first choose Keyword as filter and click [Apply filter]. Then, start typing in the keyword to filter on below: ", LocalStylingManager.ColoredCommentLabel(LocalStylingManager.DefaultAttentionColor));
 
                     using (new GUILayout.HorizontalScope(GUI.skin.box))
                     {
@@ -991,16 +987,18 @@ namespace ModCrafting
             {
                 using (new GUILayout.HorizontalScope(GUI.skin.box))
                 {
-                    GUILayout.Label($"Items filtered on: {SelectedFilter}", LocalStylingManager.ColoredFieldNameLabel(LocalStylingManager.DefaultHighlightColor));
+                    GUILayout.Label($"Items filtered on:", LocalStylingManager.ColoredFieldNameLabel(LocalStylingManager.DefaultHighlightColor));
                     GUILayout.Label($"{SelectedFilter}", LocalStylingManager.ColoredFieldValueLabel(LocalStylingManager.DefaultHighlightColor));
                 }
 
                 FilteredItemsScrollView();
 
+                string[] filteredItemNames = GetFilteredItemNames(SelectedFilter);
+                SelectedItemToCraftItemName = filteredItemNames[SelectedItemToCraftIndex].Replace(" ", "_");
                 using (new GUILayout.HorizontalScope(GUI.skin.box))
                 {
                     GUILayout.Label("Select item to craft: ", LocalStylingManager.ColoredFieldNameLabel(LocalStylingManager.DefaultHighlightColor));
-                    GUILayout.Label($"{SelectedItemToCraft}", LocalStylingManager.ColoredFieldValueLabel(LocalStylingManager.DefaultHighlightColor));
+                    GUILayout.Label($"{SelectedItemToCraftItemName}", LocalStylingManager.ColoredFieldValueLabel(LocalStylingManager.DefaultHighlightColor));
                 }
 
                 using (new GUILayout.HorizontalScope(GUI.skin.box))
@@ -1037,7 +1035,8 @@ namespace ModCrafting
             if (filteredItemNames != null)
             {
                 int _SelectedItemToCraftIndex = SelectedItemToCraftIndex;
-                SelectedItemToCraftIndex = GUILayout.SelectionGrid(SelectedItemToCraftIndex, filteredItemNames, 3, LocalStylingManager.ColoredSelectedGridButton(_SelectedItemToCraftIndex == SelectedItemToCraftIndex));
+                SelectedItemToCraftItemName = filteredItemNames[SelectedItemToCraftIndex].Replace(" ", "_");
+                SelectedItemToCraftIndex = GUILayout.SelectionGrid(SelectedItemToCraftIndex, filteredItemNames, 3, LocalStylingManager.ColoredSelectedGridButton(_SelectedItemToCraftIndex != SelectedItemToCraftIndex));
             }
             GUILayout.EndScrollView();
         }

@@ -230,8 +230,7 @@ namespace ModCrafting.Managers
         public GUIStyle FormInputTextField => new GUIStyle(GUI.skin.textField)
         {
             alignment = TextAnchor.MiddleRight,
-            fontSize = DefaultFontSize,
-            stretchWidth = true,
+            fontSize = DefaultFontSize,           
             wordWrap = true
         };
         public GUIStyle CommentLabel => new GUIStyle(GUI.skin.label)
