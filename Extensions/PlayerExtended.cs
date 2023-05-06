@@ -1,6 +1,7 @@
-﻿using UnityEngine;
+﻿using ModCrafting.Managers;
+using UnityEngine;
 
-namespace ModCrafting
+namespace ModCrafting.Extensions
 {
     class PlayerExtended : Player
     {
@@ -8,6 +9,7 @@ namespace ModCrafting
         {
             base.Start();
             new GameObject($"__{nameof(ModCrafting)}__").AddComponent<ModCrafting>();
+            new GameObject($"__{nameof(StylingManager)}__").AddComponent<StylingManager>();
         }
     }
 }

@@ -1,5 +1,8 @@
 using Enums;
-using ModCrafting.Enums;
+using ModCrafting.Data.Enums;
+using ModCrafting.Data.Interfaces;
+using ModCrafting.Data.Modding;
+using ModCrafting.Managers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,6 +13,7 @@ using UnityEngine.UI;
 
 namespace ModCrafting
 {
+
     /// <summary>
     /// ModCrafting is a mod for Green Hell, that allows a player
     ///  to craft any game item without the needed materials and
@@ -20,164 +24,8 @@ namespace ModCrafting
     public class ModCrafting : MonoBehaviour, IYesNoDialogOwner
     {
         private static ModCrafting Instance;
-
         private static readonly string ModName = nameof(ModCrafting);
-        private static readonly float ModScreenTotalWidth = 850f;
-        private static readonly float ModScreenTotalHeight = 500f;
-        private static readonly float ModScreenMinWidth = 800f;
-        private static readonly float ModScreenMaxWidth = 850f;
-        private static readonly float ModScreenMinHeight = 50f;
-        private static readonly float ModScreenMaxHeight = 550f;
-        private static float ModScreenStartPositionX { get; set; } =  Screen.width / 7f;
-        private static float ModScreenStartPositionY { get; set; } = Screen.height / 7f;
-        private static bool IsMinimized { get; set; } = false;
-
-        private Color DefaultGuiColor = GUI.color;
-        private bool ShowUI = false;
-
-        private static ItemsManager LocalItemsManager;
-        private static ConstructionController LocalConstructionController;
-        private static HUDManager LocalHUDManager;
-        private static Player LocalPlayer;
-        private static InventoryBackpack LocalInventoryBackpack;
-
-        public static Rect ModCraftingScreen = new Rect(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenTotalHeight);
-        public static string SearchItemKeyWord = string.Empty;
-        public static Vector2 FilteredItemsScrollViewPosition;
-        public static string SelectedItemToCraftItemName;
-        public static int SelectedItemToCraftIndex;
-        public static ItemID SelectedItemToCraftItemID;
-        public static Item SelectedItemToCraft;
-        public static GameObject SelectedGameObjectToDestroy = null;
-        public static List<GameObject> ItemsInPlayerActionRange;
-        public static Vector2 ItemsInRangeScrollViewPosition { get; private set; }
-        public static int SelectedGameObjectToDestroyIndex { get; private set; }
-        public static string SelectedGameObjectToDestroyName = string.Empty;
-        public static List<string> DestroyableObjectNames { get; set; } = new List<string> {
-                                                                                "tree", "plant", "leaf", "stone", "seat", "bag", "beam", "corrugated", "anaconda",  "dead",
-                                                                                "metal", "board", "cardboard", "plank", "plastic", "small", "tarp", "oil", "sock",
-                                                                                "cartel", "military", "tribal", "village", "ayahuasca", "gas", "boat", "ship",
-                                                                                "bridge", "chair", "stove", "barrel", "tank", "jerrycan", "microwave",
-                                                                                "sprayer", "shelf", "wind", "air", "bottle", "trash", "lab", "table", "diving",
-                                                                                "roof", "floor", "hull", "frame", "cylinder", "wire", "wiretap", "generator",
-                                                                                "platform", "walk", "car", "mattr", "wing", "plane", "hang", "phallus", "bush",
-                                                                                "lod0"
-                                                                        };
-        public static Item SelectedItemToDestroy = null;
-        public static string SelectedFilterName;
-        public static int SelectedFilterIndex;
-        public static ItemFilter SelectedFilter = ItemFilter.All;
-        public static string ItemCountToCraft = "1";
-        public static bool ShouldAddToBackpackOption = true;
-        public static List<Item> CraftedItems = new List<Item>();
-
-        public bool DestroyTargetOption { get; private set; } = false;
-
-        public bool IsModActiveForMultiplayer { get; private set; } = false;
-        public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
-
-        public static string ItemDestroyedMessage(string item)
-            => $"{item} destroyed!";
-        public static string ItemNotDestroyedMessage(string item)
-            => $"{item} cannot be destroyed!";
-        public static string ItemNotSelectedMessage()
-            => $"Not any item selected to destroy!";
-        public static string ItemNotCraftedMessage()
-            => $"Item could not be crafted!";
-        public static string ItemCraftedMessage(string item, int count)
-            => $"{count} x {item} crafted!";
-        public static string OnlyForSinglePlayerOrHostMessage()
-            => $"Only available for single player or when host. Host can activate using ModManager.";
-        public static string PermissionChangedMessage(string permission, string reason)
-            => $"Permission to use mods and cheats in multiplayer was {permission} because {reason}.";
-        public static string HUDBigInfoMessage(string message, MessageType messageType, Color? headcolor = null)
-            => $"<color=#{ (headcolor != null ? ColorUtility.ToHtmlStringRGBA(headcolor.Value) : ColorUtility.ToHtmlStringRGBA(Color.red))  }>{messageType}</color>\n{message}";
-
-        private void HandleException(Exception exc, string methodName)
-        {
-            string info = $"[{ModName}:{methodName}] throws exception:\n{exc.Message}";
-            ModAPI.Log.Write(info);
-            ShowHUDBigInfo(HUDBigInfoMessage(info, MessageType.Error, Color.red));
-        }
-
-        private static readonly string RuntimeConfigurationFile = Path.Combine(Application.dataPath.Replace("GH_Data", "Mods"), "RuntimeConfiguration.xml");
-        private static KeyCode ModKeybindingId { get; set; } = KeyCode.Keypad1;
-        private static KeyCode ModDeleteKeybindingId { get; set; } = KeyCode.KeypadMinus;
-        private KeyCode GetConfigurableKey(string buttonId)
-        {
-            KeyCode configuredKeyCode = default;
-            string configuredKeybinding = string.Empty;
-
-            try
-            {
-                if (File.Exists(RuntimeConfigurationFile))
-                {
-                    using (var xmlReader = XmlReader.Create(new StreamReader(RuntimeConfigurationFile)))
-                    {
-                        while (xmlReader.Read())
-                        {
-                            if (xmlReader["ID"] == ModName)
-                            {
-                                if (xmlReader.ReadToFollowing(nameof(Button)) && xmlReader["ID"] == buttonId)
-                                {
-                                    configuredKeybinding = xmlReader.ReadElementContentAsString();
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (!string.IsNullOrEmpty(configuredKeybinding))
-                {
-                    configuredKeyCode = EnumUtils<KeyCode>.GetValue(configuredKeybinding);
-                }
-                else
-                {
-                    if (buttonId == nameof(ModKeybindingId))
-                    {
-                        configuredKeyCode = ModKeybindingId;
-                    }
-                    if (buttonId == nameof(ModDeleteKeybindingId))
-                    {
-                        configuredKeyCode = ModDeleteKeybindingId;
-                    }
-                }
-
-                return configuredKeyCode;
-            }
-            catch (Exception exc)
-            {
-                HandleException(exc, nameof(GetConfigurableKey));
-                if (buttonId == nameof(ModKeybindingId))
-                {
-                    configuredKeyCode = ModKeybindingId;
-                }
-                if (buttonId == nameof(ModDeleteKeybindingId))
-                {
-                    configuredKeyCode = ModDeleteKeybindingId;
-                }
-                return configuredKeyCode;
-            }
-        }
-
-        public void Start()
-        {
-            ModManager.ModManager.onPermissionValueChanged += ModManager_onPermissionValueChanged;
-            ModKeybindingId = GetConfigurableKey(nameof(ModKeybindingId));
-            ModDeleteKeybindingId = GetConfigurableKey(nameof(ModDeleteKeybindingId));
-        }
-
-        private void ModManager_onPermissionValueChanged(bool optionValue)
-        {
-            string reason = optionValue ? "the game host allowed usage" : "the game host did not allow usage";
-            IsModActiveForMultiplayer = optionValue;
-
-            ShowHUDBigInfo(
-                          (optionValue ?
-                            HUDBigInfoMessage(PermissionChangedMessage($"granted", $"{reason}"), MessageType.Info, Color.green)
-                            : HUDBigInfoMessage(PermissionChangedMessage($"revoked", $"{reason}"), MessageType.Info, Color.yellow))
-                            );
-        }
+        private static readonly string RuntimeConfiguration = Path.Combine(Application.dataPath.Replace("GH_Data", "Mods"), $"{nameof(RuntimeConfiguration)}.xml");
 
         public ModCrafting()
         {
@@ -190,33 +38,249 @@ namespace ModCrafting
             return Instance;
         }
 
-        public void ShowHUDBigInfo(string text)
+        private static float ModCraftingScreenTotalWidth { get; set; } = 700f;
+        private static float ModCraftingScreenTotalHeight { get; set; } = 500f;
+        private static float ModCraftingScreenMinWidth { get; set; } = 700f;
+        private static float ModCraftingScreenMinHeight { get; set; } = 50f;
+        private static float ModCraftingScreenMaxWidth { get; set; } = Screen.width;
+        private static float ModCraftingScreenMaxHeight { get; set; } = Screen.height;
+        private static float ModCraftingScreenStartPositionX { get; set; } = Screen.width / 2f;
+        private static float ModCraftingScreenStartPositionY { get; set; } = Screen.height / 2f;
+        private static bool IsModCraftingScreenMinimized { get; set; } = false;
+        private static int ModCraftingScreenId { get; set; } = 0;
+        private bool ShowModCraftingScreen { get; set; } = false;
+        private bool ShowModCraftingInfo { get; set; } = false;
+
+        public IConfigurableMod SelectedMod { get; set; } = default;
+        public Vector2 ModCraftingInfoScrollViewPosition { get; set; } = default;
+
+        public static Rect ModCraftingScreen = new Rect(ModCraftingScreenStartPositionX, ModCraftingScreenStartPositionY, ModCraftingScreenTotalWidth, ModCraftingScreenTotalHeight);
+
+        private static ItemsManager LocalItemsManager;
+        private static ConstructionController LocalConstructionController;
+        private static HUDManager LocalHUDManager;
+        private static Player LocalPlayer;
+        private static InventoryBackpack LocalInventoryBackpack;
+        private static StylingManager LocalStylingManager;
+
+
+        public string SearchItemKeyWord = string.Empty;
+        public Vector2 FilteredItemsScrollViewPosition;
+        public string SelectedItemToCraftItemName;
+        public int SelectedItemToCraftIndex;
+        public ItemID SelectedItemToCraftItemID;
+        public Item SelectedItemToCraft;
+        public GameObject SelectedGameObjectToDestroy = null;
+        public List<GameObject> ItemsInPlayerActionRange;
+        public Vector2 ItemsInRangeScrollViewPosition { get; private set; }
+        public int SelectedGameObjectToDestroyIndex { get; private set; }
+        public string SelectedGameObjectToDestroyName = string.Empty;
+        public List<string> DestroyableObjectNames { get; set; } = new List<string> {
+                                                                                "tree", "plant", "leaf", "stone", "seat", "bag", "beam", "corrugated", "anaconda",  "dead",
+                                                                                "metal", "board", "cardboard", "plank", "plastic", "small", "tarp", "oil", "sock",
+                                                                                "cartel", "military", "tribal", "village", "ayahuasca", "gas", "boat", "ship",
+                                                                                "bridge", "chair", "stove", "barrel", "tank", "jerrycan", "microwave",
+                                                                                "sprayer", "shelf", "wind", "air", "bottle", "trash", "lab", "table", "diving",
+                                                                                "roof", "floor", "hull", "frame", "cylinder", "wire", "wiretap", "generator",
+                                                                                "platform", "walk", "car", "mattr", "wing", "plane", "hang", "phallus", "bush",
+                                                                                "lod0"
+                                                                        };
+        public Item SelectedItemToDestroy = null;
+        public string SelectedFilterName;
+        public int SelectedFilterIndex;
+        public ItemFilter SelectedFilter = ItemFilter.All;
+        public string ItemCountToCraft = "1";
+        public bool ShouldAddToBackpackOption = true;
+        public List<Item> CraftedItems = new List<Item>();
+
+        public bool DestroyTargetOption { get; set; } = false;
+
+        public bool IsModActiveForMultiplayer { get; private set; } = false;
+        public bool IsModActiveForSingleplayer => ReplTools.AmIMaster();
+
+        public string ItemDestroyedMessage(string item)
+            => $"{item} destroyed!";
+        public string ItemNotDestroyedMessage(string item)
+            => $"{item} cannot be destroyed!";
+        public string ItemNotSelectedMessage()
+            => $"Not any item selected to destroy!";
+        public string ItemNotCraftedMessage()
+            => $"Item could not be crafted!";
+        public string ItemCraftedMessage(string item, int count)
+            => $"{count} x {item} crafted!";
+
+        public string OnlyForSinglePlayerOrHostMessage()
+            => $"Only available for single player or when host. Host can activate using ModManager.";
+        public string PermissionChangedMessage(string permission, string reason)
+            => $"Permission to use mods and cheats in multiplayer was {permission} because {reason}.";
+        public string HUDBigInfoMessage(string message, MessageType messageType, Color? headcolor = null)
+            => $"<color=#{ (headcolor != null ? ColorUtility.ToHtmlStringRGBA(headcolor.Value) : ColorUtility.ToHtmlStringRGBA(Color.red))  }>{messageType}</color>\n{message}";
+
+        public KeyCode ShortcutKey { get; set; } = KeyCode.Alpha8;
+        public KeyCode DeleteShortcutKey { get; set; } = KeyCode.KeypadMinus;
+
+        protected virtual void Start()
+        {
+            ModManager.ModManager.onPermissionValueChanged += ModManager_onPermissionValueChanged;
+            ShortcutKey = GetShortcutKey(nameof(ShortcutKey));
+            DeleteShortcutKey = GetShortcutKey(nameof(DeleteShortcutKey));
+        }
+
+        private void ModManager_onPermissionValueChanged(bool optionValue)
+        {
+            string reason = optionValue ? "the game host allowed usage" : "the game host did not allow usage";
+            IsModActiveForMultiplayer = optionValue;
+
+            ShowHUDBigInfo(
+                          (optionValue ?
+                            HUDBigInfoMessage(PermissionChangedMessage($"granted", $"{reason}"), MessageType.Info, LocalStylingManager.DefaultEnabledColor)
+                            : HUDBigInfoMessage(PermissionChangedMessage($"revoked", $"{reason}"), MessageType.Info, Color.yellow))
+                            );
+        }
+
+        public void ShowHUDBigInfo(string text, float duration = 3f)
         {
             string header = $"{ModName} Info";
             string textureName = HUDInfoLogTextureType.Count.ToString();
-            HUDBigInfo hudBigInfo = (HUDBigInfo)LocalHUDManager.GetHUD(typeof(HUDBigInfo));
-            HUDBigInfoData.s_Duration = 2f;
-            HUDBigInfoData hudBigInfoData = new HUDBigInfoData
+            HUDBigInfo obj = (HUDBigInfo)LocalHUDManager.GetHUD(typeof(HUDBigInfo));
+            HUDBigInfoData.s_Duration = duration;
+            HUDBigInfoData data = new HUDBigInfoData
             {
                 m_Header = header,
                 m_Text = text,
                 m_TextureName = textureName,
                 m_ShowTime = Time.time
             };
-            hudBigInfo.AddInfo(hudBigInfoData);
-            hudBigInfo.Show(true);
+            obj.AddInfo(data);
+            obj.Show(show: true);
         }
 
         public void ShowHUDInfoLog(string itemID, string localizedTextKey)
         {
-            var localization = GreenHellGame.Instance.GetLocalization();
-            HUDMessages hUDMessages = (HUDMessages)LocalHUDManager.GetHUD(typeof(HUDMessages));
-            hUDMessages.AddMessage(
-                $"{localization.Get(localizedTextKey)}  {localization.Get(itemID)}"
-                );
+            Localization localization = GreenHellGame.Instance.GetLocalization();
+            var messages = ((HUDMessages)LocalHUDManager.GetHUD(typeof(HUDMessages)));
+            messages.AddMessage($"{localization.Get(localizedTextKey)}  {localization.Get(itemID)}");
         }
 
-        private void EnableCursor(bool blockPlayer = false)
+        public KeyCode GetShortcutKey(string buttonID)
+        {
+            var ConfigurableModList = GetModList();
+            if (ConfigurableModList != null && ConfigurableModList.Count > 0)
+            {
+                SelectedMod = ConfigurableModList.Find(cfgMod => cfgMod.ID == ModName);
+                return SelectedMod.ConfigurableModButtons.Find(cfgButton => cfgButton.ID == buttonID).ShortcutKey;
+            }
+            else
+            {
+                switch (buttonID)
+                {
+                    case nameof(ShortcutKey):
+                        return KeyCode.Alpha8;
+                    case nameof(DeleteShortcutKey):
+                        return KeyCode.KeypadMinus;
+                    default:
+                        return KeyCode.None;
+                }
+            }
+        }
+
+        private List<IConfigurableMod> GetModList()
+        {
+            List<IConfigurableMod> modList = new List<IConfigurableMod>();
+            try
+            {
+                if (File.Exists(RuntimeConfiguration))
+                {
+                    using (XmlReader configFileReader = XmlReader.Create(new StreamReader(RuntimeConfiguration)))
+                    {
+                        while (configFileReader.Read())
+                        {
+                            configFileReader.ReadToFollowing("Mod");
+                            do
+                            {
+                                string gameID = GameID.GreenHell.ToString();
+                                string modID = configFileReader.GetAttribute(nameof(IConfigurableMod.ID));
+                                string uniqueID = configFileReader.GetAttribute(nameof(IConfigurableMod.UniqueID));
+                                string version = configFileReader.GetAttribute(nameof(IConfigurableMod.Version));
+
+                                var configurableMod = new ConfigurableMod(gameID, modID, uniqueID, version);
+
+                                configFileReader.ReadToDescendant("Button");
+                                do
+                                {
+                                    string buttonID = configFileReader.GetAttribute(nameof(IConfigurableModButton.ID));
+                                    string buttonKeyBinding = configFileReader.ReadElementContentAsString();
+
+                                    configurableMod.AddConfigurableModButton(buttonID, buttonKeyBinding);
+
+                                } while (configFileReader.ReadToNextSibling("Button"));
+
+                                if (!modList.Contains(configurableMod))
+                                {
+                                    modList.Add(configurableMod);
+                                }
+
+                            } while (configFileReader.ReadToNextSibling("Mod"));
+                        }
+                    }
+                }
+                return modList;
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(GetModList));
+                modList = new List<IConfigurableMod>();
+                return modList;
+            }
+        }
+
+        private void HandleException(Exception exc, string methodName)
+        {
+            string info = $"[{ModName}:{methodName}] throws exception -  {exc.TargetSite?.Name}:\n{exc.Message}\n{exc.InnerException}\n{exc.Source}\n{exc.StackTrace}";
+            ModAPI.Log.Write(info);
+            Debug.Log(info);
+        }
+
+        protected virtual void Update()
+        {
+            if (Input.GetKeyDown(ShortcutKey))
+            {
+                if (!ShowModCraftingScreen)
+                {
+                    InitData();
+                    EnableCursor(true);
+                }
+                ToggleShowUI(0);
+                if (!ShowModCraftingScreen)
+                {
+                    EnableCursor(false);
+                }
+            }
+
+            if (Input.GetKeyDown(DeleteShortcutKey))
+            {
+                DestroyTarget();
+            }
+        }
+
+        private void ToggleShowUI(int controlId)
+        {
+            switch (controlId)
+            {
+                case 0:
+                    ShowModCraftingScreen = !ShowModCraftingScreen;
+                    return;
+                case 3:
+                    ShowModCraftingInfo = !ShowModCraftingInfo;
+                    return;
+                default:
+                    ShowModCraftingInfo = !ShowModCraftingInfo;
+                    ShowModCraftingScreen = !ShowModCraftingScreen;
+                    return;
+            }
+        }
+
+        protected virtual void EnableCursor(bool blockPlayer = false)
         {
             CursorManager.Get().ShowCursor(blockPlayer, false);
 
@@ -234,29 +298,268 @@ namespace ModCrafting
             }
         }
 
-        private void Update()
+        protected virtual void OnGUI()
         {
-            if (Input.GetKeyDown(ModKeybindingId))
+            if (ShowModCraftingScreen)
             {
-                if (!ShowUI)
-                {
-                    InitData();
-                    EnableCursor(true);
-                }
-                ToggleShowUI();
-                if (!ShowUI)
-                {
-                    EnableCursor(false);
-                }
-            }
-
-            if (Input.GetKeyDown(ModDeleteKeybindingId))
-            {
-                DestroyTarget();
+                InitData();
+                InitSkinUI();
+                ShowModCraftingWindow();
             }
         }
 
-        private void DestroyTarget()
+        protected virtual void ShowModCraftingWindow()
+        {
+            if (ModCraftingScreenId <= 0)
+            {
+                ModCraftingScreenId = ModCraftingScreen.GetHashCode();
+            }
+            string ModCraftingScreenTitle = $"{ModName} created by [Dragon Legion] Immaanuel#4300";
+            ModCraftingScreen = GUILayout.Window(ModCraftingScreenId, ModCraftingScreen, InitModCraftingScreen, ModCraftingScreenTitle, GUI.skin.window, GUILayout.ExpandWidth(true), GUILayout.MinWidth(ModCraftingScreenMinWidth), GUILayout.MaxWidth(ModCraftingScreenMaxWidth), GUILayout.ExpandHeight(true), GUILayout.MinHeight(ModCraftingScreenMinHeight), GUILayout.MaxHeight(ModCraftingScreenMaxHeight));
+        }
+
+        protected virtual void InitData()
+        {
+            LocalItemsManager = ItemsManager.Get();
+            LocalConstructionController = ConstructionController.Get();
+            LocalHUDManager = HUDManager.Get();
+            LocalPlayer = Player.Get();
+            LocalInventoryBackpack = InventoryBackpack.Get();
+            LocalStylingManager = StylingManager.Get();
+        }
+
+        protected virtual void InitSkinUI()
+        {
+            GUI.skin = ModAPI.Interface.Skin;
+        }
+
+        protected virtual void InitModCraftingScreen(int windowID)
+        {
+            ModCraftingScreenStartPositionX = ModCraftingScreen.x;
+            ModCraftingScreenStartPositionY = ModCraftingScreen.y;
+
+            using (new GUILayout.VerticalScope(GUI.skin.box))
+            {
+                ModCraftingScreenMenuBox();
+
+                if (!IsModCraftingScreenMinimized)
+                {
+                    ModCraftingManagerBox();
+
+                    ConstructionsManagerBox();
+
+                    ItemsFilterBox();
+                    
+                    DestroyItemsBox();
+                    
+                    CraftItemsBox();
+
+                }
+            }
+            GUI.DragWindow(new Rect(0f, 0f, 10000f, 10000f));
+        }
+
+        protected virtual void ModCraftingScreenMenuBox()
+        {
+            string CollapseButtonText = IsModCraftingScreenMinimized ? "O" : "-";
+            if (GUI.Button(new Rect(ModCraftingScreen.width - 40f, 0f, 20f, 20f), CollapseButtonText, GUI.skin.button))
+            {
+                CollapseWindow();
+            }
+
+            if (GUI.Button(new Rect(ModCraftingScreen.width - 20f, 0f, 20f, 20f), "X", GUI.skin.button))
+            {
+                CloseWindow();
+            }
+        }
+
+        protected virtual void CollapseWindow()
+        {
+            if (!IsModCraftingScreenMinimized)
+            {
+                ModCraftingScreen = new Rect(ModCraftingScreenStartPositionX, ModCraftingScreenStartPositionY, ModCraftingScreenTotalWidth, ModCraftingScreenMinHeight);
+                IsModCraftingScreenMinimized = true;
+            }
+            else
+            {
+                ModCraftingScreen = new Rect(ModCraftingScreenStartPositionX, ModCraftingScreenStartPositionY, ModCraftingScreenTotalWidth, ModCraftingScreenTotalHeight);
+                IsModCraftingScreenMinimized = false;
+            }
+            ShowModCraftingWindow();
+        }
+
+        protected virtual void CloseWindow()
+        {
+            ShowModCraftingScreen = false;
+            EnableCursor(false);
+        }
+
+        protected virtual void ModCraftingManagerBox()
+        {
+            if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
+            {
+                using (new GUILayout.VerticalScope(GUI.skin.box))
+                {
+                    GUILayout.Label($"{ModName} Manager", LocalStylingManager.ColoredHeaderLabel(LocalStylingManager.DefaultHeaderColor));
+                    GUILayout.Label($"{ModName} Options", LocalStylingManager.ColoredSubHeaderLabel(LocalStylingManager.DefaultHeaderColor));
+
+                    if (GUILayout.Button($"Mod Info", GUI.skin.button))
+                    {
+                        ToggleShowUI(3);
+                    }
+                    if (ShowModCraftingInfo)
+                    {
+                        ModCraftingInfoBox();
+                    }
+
+                    MultiplayerOptionBox();
+
+                    ModShortcutsInfoBox();
+                }
+            }
+            else
+            {
+                OnlyForSingleplayerOrWhenHostBox();
+            }
+        }
+
+        protected virtual void OnlyForSingleplayerOrWhenHostBox()
+        {
+            using (new GUILayout.HorizontalScope(GUI.skin.box))
+            {
+                GUILayout.Label(OnlyForSinglePlayerOrHostMessage(), LocalStylingManager.ColoredCommentLabel(LocalStylingManager.DefaultAttentionColor));
+            }
+        }
+
+        protected virtual void ModCraftingInfoBox()
+        {
+            using (new GUILayout.VerticalScope(GUI.skin.box))
+            {
+                ModCraftingInfoScrollViewPosition = GUILayout.BeginScrollView(ModCraftingInfoScrollViewPosition, GUI.skin.scrollView, GUILayout.MinHeight(150f));
+
+                GUILayout.Label("Mod Info", LocalStylingManager.ColoredSubHeaderLabel(LocalStylingManager.DefaultHighlightColor));
+
+                using (new GUILayout.HorizontalScope(GUI.skin.box))
+                {
+                    GUILayout.Label($"{nameof(IConfigurableMod.GameID)}:", LocalStylingManager.FormFieldNameLabel);
+                    GUILayout.Label($"{SelectedMod.GameID}", LocalStylingManager.FormFieldValueLabel);
+                }
+                using (new GUILayout.HorizontalScope(GUI.skin.box))
+                {
+                    GUILayout.Label($"{nameof(IConfigurableMod.ID)}:", LocalStylingManager.FormFieldNameLabel);
+                    GUILayout.Label($"{SelectedMod.ID}", LocalStylingManager.FormFieldValueLabel);
+                }
+                using (new GUILayout.HorizontalScope(GUI.skin.box))
+                {
+                    GUILayout.Label($"{nameof(IConfigurableMod.UniqueID)}:", LocalStylingManager.FormFieldNameLabel);
+                    GUILayout.Label($"{SelectedMod.UniqueID}", LocalStylingManager.FormFieldValueLabel);
+                }
+                using (new GUILayout.HorizontalScope(GUI.skin.box))
+                {
+                    GUILayout.Label($"{nameof(IConfigurableMod.Version)}:", LocalStylingManager.FormFieldNameLabel);
+                    GUILayout.Label($"{SelectedMod.Version}", LocalStylingManager.FormFieldValueLabel);
+                }
+
+                GUILayout.Label("Buttons Info", LocalStylingManager.ColoredSubHeaderLabel(LocalStylingManager.DefaultHighlightColor));
+
+                foreach (var configurableModButton in SelectedMod.ConfigurableModButtons)
+                {
+                    using (new GUILayout.HorizontalScope(GUI.skin.box))
+                    {
+                        GUILayout.Label($"{nameof(IConfigurableModButton.ID)}:", LocalStylingManager.FormFieldNameLabel);
+                        GUILayout.Label($"{configurableModButton.ID}", LocalStylingManager.FormFieldValueLabel);
+                    }
+                    using (new GUILayout.HorizontalScope(GUI.skin.box))
+                    {
+                        GUILayout.Label($"{nameof(IConfigurableModButton.KeyBinding)}:", LocalStylingManager.FormFieldNameLabel);
+                        GUILayout.Label($"{configurableModButton.KeyBinding}", LocalStylingManager.FormFieldValueLabel);
+                    }
+                }
+
+                GUILayout.EndScrollView();
+            }
+        }
+
+        protected virtual void MultiplayerOptionBox()
+        {
+            try
+            {
+                using (new GUILayout.VerticalScope(GUI.skin.box))
+                {
+                    GUILayout.Label("Multiplayer Options", LocalStylingManager.ColoredSubHeaderLabel(LocalStylingManager.DefaultHeaderColor));
+
+                    string multiplayerOptionMessage = string.Empty;
+                    if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
+                    {
+                        if (IsModActiveForSingleplayer)
+                        {
+                            multiplayerOptionMessage = $"you are the game host";
+                        }
+                        if (IsModActiveForMultiplayer)
+                        {
+                            multiplayerOptionMessage = $"the game host allowed usage";
+                        }
+                        GUILayout.Label(PermissionChangedMessage($"granted", multiplayerOptionMessage), LocalStylingManager.ColoredFieldValueLabel(LocalStylingManager.DefaultEnabledColor));
+                    }
+                    else
+                    {
+                        if (!IsModActiveForSingleplayer)
+                        {
+                            multiplayerOptionMessage = $"you are not the game host";
+                        }
+                        if (!IsModActiveForMultiplayer)
+                        {
+                            multiplayerOptionMessage = $"the game host did not allow usage";
+                        }
+                        GUILayout.Label(PermissionChangedMessage($"revoked", $"{multiplayerOptionMessage}"), LocalStylingManager.ColoredFieldValueLabel(Color.yellow));
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(MultiplayerOptionBox));
+            }
+        }
+
+        protected virtual void ModShortcutsInfoBox()
+        {
+            using (new GUILayout.VerticalScope(GUI.skin.box))
+            {
+                GUILayout.Label("Mod shortcut options", LocalStylingManager.ColoredSubHeaderLabel(Color.yellow));
+
+                GUILayout.Label($"To destroy the target on mouse pointer, press [{DeleteShortcutKey}]", LocalStylingManager.TextLabel);
+            }
+        }
+
+        protected virtual void ConstructionsManagerBox()
+        {
+            try
+            {
+                using (new GUILayout.VerticalScope(GUI.skin.box))
+                {
+                    GUILayout.Label($"Constructions Manager", LocalStylingManager.ColoredHeaderLabel(Color.yellow));
+                    GUILayout.Label($"Constructions Options", LocalStylingManager.ColoredSubHeaderLabel(Color.yellow));
+
+                    DestroyTargetOptionBox();
+                }
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(ConstructionsManagerBox));
+            }
+        }
+
+        protected virtual void DestroyTargetOptionBox()
+        {
+            bool _destroyTargetOption = DestroyTargetOption;
+            DestroyTargetOption = GUILayout.Toggle(DestroyTargetOption, $"Use [{DeleteShortcutKey}] to destroy target?", GUI.skin.toggle);
+            if (_destroyTargetOption != DestroyTargetOption)
+            {
+                ShowHUDBigInfo(HUDBigInfoMessage($"Destroy target with [{DeleteShortcutKey}] has been {(DestroyTargetOption ? "enabled" : "disabled")} ", MessageType.Info, Color.green));
+            }
+        }
+
+        protected virtual void DestroyTarget()
         {
             try
             {
@@ -277,7 +580,7 @@ namespace ModCrafting
             }
         }
 
-        private void DestroyOnHit(RaycastHit hitInfo)
+        protected virtual void DestroyOnHit(RaycastHit hitInfo)
         {
             try
             {
@@ -288,10 +591,17 @@ namespace ModCrafting
                         SelectedGameObjectToDestroy = hitInfo.collider.transform.gameObject;
                         if (SelectedGameObjectToDestroy != null)
                         {
+                            var localization = GreenHellGame.Instance.GetLocalization();
                             SelectedItemToDestroy = SelectedGameObjectToDestroy?.GetComponent<Item>();
-                            SelectedGameObjectToDestroyName = SelectedItemToDestroy?.m_Info != null
-                                                                                                            ? SelectedItemToDestroy?.m_Info?.GetNameToDisplayLocalized()
-                                                                                                            : GreenHellGame.Instance.GetLocalization().Get(SelectedGameObjectToDestroy?.name);
+                            if (SelectedItemToDestroy != null && Item.Find(SelectedItemToDestroy.GetInfoID()) != null)
+                            {
+                                SelectedGameObjectToDestroyName = localization.Get(SelectedItemToDestroy.GetInfoID().ToString()) ?? SelectedItemToDestroy?.GetName();
+                            }
+                            else
+                            {
+                                SelectedGameObjectToDestroyName = localization.Get(SelectedGameObjectToDestroy?.name) ?? SelectedGameObjectToDestroy?.name;
+                            }
+
                             ShowConfirmDestroyDialog(SelectedGameObjectToDestroyName);
                         }
                     }
@@ -303,12 +613,12 @@ namespace ModCrafting
             }
         }
 
-        private void ShowConfirmDestroyDialog(string itemToDestroyName)
+        protected virtual void ShowConfirmDestroyDialog(string itemToDestroyName)
         {
             try
             {
                 EnableCursor(true);
-                string description = $"Are you sure you want to destroy { itemToDestroyName }?";
+                string description = $"Are you sure you want to destroy {itemToDestroyName}?";
                 YesNoDialog destroyYesNoDialog = GreenHellGame.GetYesNoDialog();
                 destroyYesNoDialog.Show(this, DialogWindowType.YesNo, $"{ModName} Info", description, true, false);
                 destroyYesNoDialog.gameObject.SetActive(true);
@@ -319,12 +629,7 @@ namespace ModCrafting
             }
         }
 
-        private void ToggleShowUI()
-        {
-            ShowUI = !ShowUI;
-        }
-
-        private void DestroySelectedItem()
+        protected virtual void DestroySelectedItem()
         {
             try
             {
@@ -340,21 +645,22 @@ namespace ModCrafting
                         {
                             Destroy(SelectedGameObjectToDestroy);
                         }
-                        ShowHUDBigInfo(HUDBigInfoMessage(ItemDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Info, Color.green));
+                        ShowHUDBigInfo(HUDBigInfoMessage(ItemDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Info, LocalStylingManager.DefaultEnabledColor));
                     }
                     else
                     {
                         ShowHUDBigInfo(HUDBigInfoMessage(ItemNotDestroyedMessage(SelectedGameObjectToDestroyName), MessageType.Warning, Color.yellow));
                     }
                 }
-                else if (CraftedItems != null)
+                
+                if (CraftedItems != null)
                 {
                     List<Item> toDestroy = GetCraftedItems(SelectedFilter);
                     if (toDestroy != null)
                     {
                         foreach (Item craftedItem in toDestroy)
                         {
-                            LocalItemsManager.AddItemToDestroy(craftedItem);
+                          Destroy(craftedItem);
                         }
                         toDestroy.Clear();
                     }
@@ -374,7 +680,7 @@ namespace ModCrafting
             }
         }
 
-        private bool IsDestroyable(GameObject go)
+        protected virtual bool IsDestroyable(GameObject go)
         {
             try
             {
@@ -391,179 +697,22 @@ namespace ModCrafting
             }
         }
 
-        private void OnGUI()
-        {
-            if (ShowUI)
-            {
-                InitData();
-                InitSkinUI();
-                InitWindow();
-            }
-        }
-
-        private void InitWindow()
-        {
-            int wid = GetHashCode();
-            ModCraftingScreen = GUILayout.Window(wid,
-                                                                                            ModCraftingScreen,
-                                                                                            InitModCraftingScreen,
-                                                                                            ModName,
-                                                                                            GUI.skin.window,
-                                                                                            GUILayout.ExpandWidth(true),
-                                                                                            GUILayout.MinWidth(ModScreenMinWidth),
-                                                                                            GUILayout.MaxWidth(ModScreenMaxWidth),
-                                                                                            GUILayout.ExpandHeight(true),
-                                                                                            GUILayout.MinHeight(ModScreenMinHeight),
-                                                                                            GUILayout.MaxHeight(ModScreenMaxHeight));
-        }
-
-        private void InitData()
-        {
-            LocalItemsManager = ItemsManager.Get();
-            LocalConstructionController = ConstructionController.Get();
-            LocalHUDManager = HUDManager.Get();
-            LocalPlayer = Player.Get();
-            LocalInventoryBackpack = InventoryBackpack.Get();
-        }
-
-        private void InitSkinUI()
-        {
-            GUI.skin = ModAPI.Interface.Skin;
-        }
-
-        private void InitModCraftingScreen(int windowID)
-        {
-            ModScreenStartPositionX = ModCraftingScreen.x;
-            ModScreenStartPositionY = ModCraftingScreen.y;
-
-            using (var modContentScope = new GUILayout.VerticalScope(GUI.skin.box))
-            {
-                ScreenMenuBox();
-                if (!IsMinimized)
-                {
-                    ModOptionsBox();
-                    ItemsFilterBox();
-                    DestroyItemsBox();
-                    CraftItemsBox();
-                }
-            }
-            GUI.DragWindow(new Rect(0f, 0f, 10000f, 10000f));
-        }
-
-        private void ModOptionsBox()
-        {
-            if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
-            {
-                using (var optionsScope = new GUILayout.VerticalScope(GUI.skin.box))
-                {
-                    GUILayout.Label($"To toggle the main mod UI, press [{ModKeybindingId}]", GUI.skin.label);
-
-                    MultiplayerOptionBox();
-                    ModKeybindingOptionBox();
-                    ConstructionsOptionBox();
-                }
-            }
-            else
-            {
-                OnlyForSingleplayerOrWhenHostBox();
-            }
-        }
-
-        private void OnlyForSingleplayerOrWhenHostBox()
-        {
-            using (var infoScope = new GUILayout.HorizontalScope(GUI.skin.box))
-            {
-                GUI.color = Color.yellow;
-                GUILayout.Label(OnlyForSinglePlayerOrHostMessage(), GUI.skin.label);
-            }
-        }
-
-        private void MultiplayerOptionBox()
-        {
-            try
-            {
-                using (var multiplayeroptionsScope = new GUILayout.VerticalScope(GUI.skin.box))
-                {
-                    GUILayout.Label("Multiplayer options: ", GUI.skin.label);
-                    string multiplayerOptionMessage = string.Empty;
-                    if (IsModActiveForSingleplayer || IsModActiveForMultiplayer)
-                    {
-                        GUI.color = Color.green;
-                        if (IsModActiveForSingleplayer)
-                        {
-                            multiplayerOptionMessage = $"you are the game host";
-                        }
-                        if (IsModActiveForMultiplayer)
-                        {
-                            multiplayerOptionMessage = $"the game host allowed usage";
-                        }
-                        _ = GUILayout.Toggle(true, PermissionChangedMessage($"granted", multiplayerOptionMessage), GUI.skin.toggle);
-                    }
-                    else
-                    {
-                        GUI.color = Color.yellow;
-                        if (!IsModActiveForSingleplayer)
-                        {
-                            multiplayerOptionMessage = $"you are not the game host";
-                        }
-                        if (!IsModActiveForMultiplayer)
-                        {
-                            multiplayerOptionMessage = $"the game host did not allow usage";
-                        }
-                        _ = GUILayout.Toggle(false, PermissionChangedMessage($"revoked", $"{multiplayerOptionMessage}"), GUI.skin.toggle);
-                    }
-                }
-            }
-            catch (Exception exc)
-            {
-                HandleException(exc, nameof(MultiplayerOptionBox));
-            }
-        }
-
-        private void ModKeybindingOptionBox()
-        {
-            using (var modkeybindingScope = new GUILayout.VerticalScope(GUI.skin.box))
-            {
-                GUI.color = DefaultGuiColor;
-                GUILayout.Label("Mod keybinding options: ", GUI.skin.label);
-                GUILayout.Label($"To select an item to craft, press [{ModKeybindingId}]", GUI.skin.label);
-                GUILayout.Label($"To destroy the target on mouse pointer, press [{ModDeleteKeybindingId}]", GUI.skin.label);
-            }
-        }
-
-        private void ConstructionsOptionBox()
-        {
-            try
-            {
-                using (var constructionsoptionScope = new GUILayout.VerticalScope(GUI.skin.box))
-                {
-                    GUI.color = DefaultGuiColor;
-                    GUILayout.Label($"Construction options: ", GUI.skin.label);
-                    DestroyTargetOption = GUILayout.Toggle(DestroyTargetOption, $"Use [{ModDeleteKeybindingId}] to destroy target?", GUI.skin.toggle);
-                }
-            }
-            catch (Exception exc)
-            {
-                HandleException(exc, nameof(ConstructionsOptionBox));
-            }
-        }
-
-        private void DestroyItemsBox()
+        protected virtual void DestroyItemsBox()
         {
             //DestroySelectedItemInPlayerRangeBox();
             DestroyFilteredItemsBox();
         }
 
-        private void DestroyFilteredItemsBox()
+        protected virtual void DestroyFilteredItemsBox()
         {
             try
             {
-                using (var actionScope = new GUILayout.VerticalScope(GUI.skin.box))
+                using (new GUILayout.VerticalScope(GUI.skin.box))
                 {
-                    using (var actionBScope = new GUILayout.HorizontalScope(GUI.skin.box))
+                    using ( new GUILayout.HorizontalScope(GUI.skin.box))
                     {
-                        GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} crafted using this mod.", GUI.skin.label);
-                        if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.MaxWidth(200f)))
+                        GUILayout.Label($"Click to destroy {SelectedFilter.ToString().ToLower()} crafted using this mod.", LocalStylingManager.TextLabel);
+                        if (GUILayout.Button($"Destroy", GUI.skin.button, GUILayout.Width(150f)))
                         {
                             ShowConfirmDestroyDialog(SelectedFilter.ToString().ToLower());
                         }
@@ -576,148 +725,18 @@ namespace ModCrafting
             }
         }
 
-        private void DestroySelectedItemInPlayerRangeBox()
-        {
-            try
-            {
-                using (var actionScope = new GUILayout.VerticalScope(GUI.skin.box))
-                {
-                    GUILayout.Label($"Click to destroy selected item within player action range.", GUI.skin.label);
-
-                    ItemsInPlayerRangeScrollView();
-
-                    if (GUILayout.Button($"Destroy selected", GUI.skin.button, GUILayout.MaxWidth(200f)))
-                    {
-                        OnClickDestroySelectedItemInRangeButton();
-                    }
-                }
-            }
-            catch (Exception exc)
-            {
-                HandleException(exc, nameof(DestroySelectedItemInPlayerRangeBox));
-            }
-        }
-
-        private void ItemsInPlayerRangeScrollView()
-        {
-            ItemsInRangeScrollViewPosition = GUILayout.BeginScrollView(ItemsInRangeScrollViewPosition, GUI.skin.scrollView, GUILayout.MinHeight(100f));
-            string[] inRangeItemNames = GetItemNamesInRange(10f);
-            if (inRangeItemNames != null && inRangeItemNames.Length > 0)
-            {
-                SelectedGameObjectToDestroyIndex = GUILayout.SelectionGrid(SelectedGameObjectToDestroyIndex, inRangeItemNames, 3, GUI.skin.button);
-            }
-            else
-            {
-                GUILayout.Label($"There aren't any items found within 10 feet player action range.", GUI.skin.label);
-            }
-            GUILayout.EndScrollView();
-        }
-
-        private string[] GetItemNamesInRange(float range)
-        {
-            try
-            {
-                List<string> names = default;
-
-               ItemsInPlayerActionRange = GetItemsInPlayerActionRange(range);
-                if (ItemsInPlayerActionRange != null)
-                {
-                    names = new List<string>();
-                    foreach (var go in ItemsInPlayerActionRange)
-                    {
-                        Item component = go.GetComponent<Item>();
-                        if (component != null)
-                        {
-                            names.Add(component.GetName().Replace("_", " "));
-                        }
-                    }
-                }
-
-                return names?.OrderBy(itemName => itemName).ToArray();
-            }
-            catch (Exception exc)
-            {
-                HandleException(exc, nameof(GetItemNamesInRange));
-                return null;
-            }
-        }
-
-        private List<GameObject> GetItemsInPlayerActionRange(float range)
-        {
-            try
-            {
-                List<GameObject> list = new List<GameObject>();
-               var infos = LocalItemsManager.GetAllInfos();
-                foreach (var kvp in infos)
-                {
-                    GameObject goInRange = MainLevel.Instance.FindObject(kvp.Value.m_Item.name);
-                    if (goInRange != null)
-                    {
-                        bool inRange = MainLevel.Instance.IsObjectInRange(LocalPlayer.gameObject, goInRange, range);
-                        if (inRange)
-                        {
-                            if (!list.Contains(goInRange))
-                            {
-                                list.Add(goInRange);
-                            }
-                        }
-                    }
-                }
-                return list;
-            }
-            catch (Exception exc)
-            {
-                HandleException(exc, nameof(GetItemsInPlayerActionRange));
-                return null;
-            }
-        }
-
-        private void ScreenMenuBox()
-        {
-            if (GUI.Button(new Rect(ModCraftingScreen.width - 40f, 0f, 20f, 20f), "-", GUI.skin.button))
-            {
-                CollapseWindow();
-            }
-
-            if (GUI.Button(new Rect(ModCraftingScreen.width - 20f, 0f, 20f, 20f), "X", GUI.skin.button))
-            {
-                CloseWindow();
-            }
-        }
-
-        private void CollapseWindow()
-        {
-            if (!IsMinimized)
-            {
-                ModCraftingScreen = new Rect(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenMinHeight);
-                IsMinimized = true;
-            }
-            else
-            {
-                ModCraftingScreen = new Rect(ModScreenStartPositionX, ModScreenStartPositionY, ModScreenTotalWidth, ModScreenTotalHeight);
-                IsMinimized = false;
-            }
-            InitWindow();
-        }
-
-        private void CloseWindow()
-        {
-            ShowUI = false;
-            EnableCursor(false);
-        }
-
-        private void CraftItemsBox()
+        protected virtual void CraftItemsBox()
         {
             ItemsScrollViewBox();
         }
 
-        private string[] GetFilters()
+        protected virtual string[] GetFilters()
         {
             string[] filters = Enum.GetNames(typeof(ItemFilter));
             return filters;
         }
 
-        private string[] GetFilteredItemNames(ItemFilter filter)
+        protected virtual string[] GetFilteredItemNames(ItemFilter filter)
         {
             List<string> filteredItemNames = new List<string>();
             List<ItemInfo> allInfos = LocalItemsManager.GetAllInfos().Values.ToList();
@@ -768,7 +787,7 @@ namespace ModCrafting
             return filteredItemNames.OrderBy(itemName => itemName).ToArray();
         }
 
-        private List<ItemInfo> GetMedical() => new List<ItemInfo>
+        protected virtual List<ItemInfo> GetMedical() => new List<ItemInfo>
             {
                 LocalItemsManager.GetInfo(ItemID.Molineria_leaf),
                 LocalItemsManager.GetInfo(ItemID.lily_dressing),
@@ -817,10 +836,11 @@ namespace ModCrafting
                 LocalItemsManager.GetInfo(ItemID.QuestItem_BioHazmatSuit),
                 LocalItemsManager.GetInfo(ItemID.QuestItem_Cure_Vial),
                 LocalItemsManager.GetInfo(ItemID.tobacco_flowers),
-                LocalItemsManager.GetInfo(ItemID.Tobacco_Torch)
+                LocalItemsManager.GetInfo(ItemID.Tobacco_Torch),
+
             };
 
-        private List<Item> GetCraftedItems(ItemFilter filter)
+        protected virtual List<Item> GetCraftedItems(ItemFilter filter)
         {
             List<Item> filteredItems;
             switch (filter)
@@ -861,7 +881,7 @@ namespace ModCrafting
             return filteredItems;
         }
 
-        private List<ItemInfo> GetUnique()
+        protected virtual List<ItemInfo> GetUnique()
         {
             List<ItemInfo> allInfos = LocalItemsManager.GetAllInfos().Values.ToList();
             List<ItemInfo> uniques = allInfos.Where(info => info.m_ID.IsQuestItem() || info.IsReadableItem()).ToList();
@@ -893,7 +913,7 @@ namespace ModCrafting
             return uniques;
         }
 
-        private List<ItemInfo> GetResources() => new List<ItemInfo>
+        protected virtual List<ItemInfo> GetResources() => new List<ItemInfo>
             {
                 LocalItemsManager.GetInfo(ItemID.Log),
                 LocalItemsManager.GetInfo(ItemID.Bamboo_Log),
@@ -931,39 +951,67 @@ namespace ModCrafting
                 LocalItemsManager.GetInfo(ItemID.Turtle_shell)
             };
 
-        private void ItemsFilterBox()
+        protected virtual void ItemsFilterBox()
         {
-            using (var filterScope = new GUILayout.VerticalScope(GUI.skin.box))
+            using (new GUILayout.VerticalScope(GUI.skin.box))
             {
                 string[] filters = GetFilters();
                 if (filters != null)
                 {
                     int filtersCount = filters.Length;
-                    GUI.color = Color.cyan;
-                    GUILayout.Label("Choose an item filter. If you want to search for items on keyword, type it in the field bellow: ", GUI.skin.label);
+                    int _SelectedFilterIndex = SelectedFilterIndex;
 
-                    GUI.color = DefaultGuiColor;
-                    SearchItemKeyWord = GUILayout.TextField(SearchItemKeyWord, GUI.skin.textField);
-                    SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, GUI.skin.button);
-                    if (GUILayout.Button($"Apply filter", GUI.skin.button))
+                    GUILayout.Label("Choose an item filter.", LocalStylingManager.TextLabel);
+                   
+                    SelectedFilterIndex = GUILayout.SelectionGrid(SelectedFilterIndex, filters, filtersCount, LocalStylingManager.ColoredSelectedGridButton(_SelectedFilterIndex == SelectedFilterIndex));
+
+                    using (new GUILayout.HorizontalScope(GUI.skin.box))
                     {
-                        OnClickApplyFilterButton();
+                        GUILayout.Label("Click to activate selected filter: ", LocalStylingManager.TextLabel);
+                        if (GUILayout.Button($"[Apply]", GUI.skin.button, GUILayout.Width(150f)))
+                        {
+                            OnClickApplyFilterButton();
+                        }
                     }
+
+                    GUILayout.Label("If you want to search for items on keyword, first choose Keyword as filter and click [Apply]. Then, start typing in the keyword to filter on below: ", LocalStylingManager.ColoredCommentLabel(LocalStylingManager.DefaultAttentionColor));
+
+                    using (new GUILayout.HorizontalScope(GUI.skin.box))
+                    {
+                        GUILayout.Label("Keyword to filter on: ", LocalStylingManager.FormFieldNameLabel);
+                        SearchItemKeyWord = GUILayout.TextField(SearchItemKeyWord, LocalStylingManager.FormInputTextField);
+                    }                   
                 }
             }
         }
 
-        private void ItemsScrollViewBox()
+        protected virtual void ItemsScrollViewBox()
         {
-            using (var itemsViewScope = new GUILayout.VerticalScope(GUI.skin.box))
+            using (new GUILayout.VerticalScope(GUI.skin.box))
             {
+                using (new GUILayout.HorizontalScope(GUI.skin.box))
+                {
+                    GUILayout.Label($"Items filtered on: {SelectedFilter}", LocalStylingManager.ColoredFieldNameLabel(LocalStylingManager.DefaultHighlightColor));
+                    GUILayout.Label($"{SelectedFilter}", LocalStylingManager.ColoredFieldValueLabel(LocalStylingManager.DefaultHighlightColor));
+                }
+
                 FilteredItemsScrollView();
-                using (var actionScope = new GUILayout.HorizontalScope(GUI.skin.box))
+
+                using (new GUILayout.HorizontalScope(GUI.skin.box))
+                {
+                    GUILayout.Label("Select item to craft: ", LocalStylingManager.ColoredFieldNameLabel(LocalStylingManager.DefaultHighlightColor));
+                    GUILayout.Label($"{SelectedItemToCraft}", LocalStylingManager.ColoredFieldValueLabel(LocalStylingManager.DefaultHighlightColor));
+                }
+
+                using (new GUILayout.HorizontalScope(GUI.skin.box))
                 {
                     ShouldAddToBackpackOption = GUILayout.Toggle(ShouldAddToBackpackOption, "Add to backpack?", GUI.skin.toggle);
-                    GUILayout.Label("Craft how many?: ", GUI.skin.label);
-                    ItemCountToCraft = GUILayout.TextField(ItemCountToCraft, GUI.skin.textField, GUILayout.MaxWidth(50f));
-                    if (GUILayout.Button($"Craft selected", GUI.skin.button, GUILayout.MaxWidth(200f)))
+
+                    GUILayout.Label("Craft how many?: ", LocalStylingManager.FormFieldNameLabel);
+
+                    ItemCountToCraft = GUILayout.TextField(ItemCountToCraft,LocalStylingManager.FormInputTextField, GUILayout.Width(50f));
+
+                    if (GUILayout.Button($"Craft selected", GUI.skin.button, GUILayout.Width(150f)))
                     {
                         OnClickCraftSelectedItemButton();
                     }
@@ -971,7 +1019,7 @@ namespace ModCrafting
             }
         }
 
-        private void OnClickApplyFilterButton()
+        protected virtual void OnClickApplyFilterButton()
         {
             string[] filters = GetFilters();
             if (filters != null)
@@ -981,24 +1029,20 @@ namespace ModCrafting
             }
         }
 
-        private void FilteredItemsScrollView()
+        protected virtual void FilteredItemsScrollView()
         {
-            GUI.color = Color.cyan;
-            GUILayout.Label($"Items filtered on: {SelectedFilter}", GUI.skin.label);
-
-            GUI.color =DefaultGuiColor;
-            GUILayout.Label("Select item to craft: ", GUI.skin.label);
-
             FilteredItemsScrollViewPosition = GUILayout.BeginScrollView(FilteredItemsScrollViewPosition, GUI.skin.scrollView, GUILayout.MinHeight(300f));
+
             string[] filteredItemNames = GetFilteredItemNames(SelectedFilter);
             if (filteredItemNames != null)
             {
-                SelectedItemToCraftIndex = GUILayout.SelectionGrid(SelectedItemToCraftIndex, filteredItemNames, 3, GUI.skin.button);
+                int _SelectedItemToCraftIndex = SelectedItemToCraftIndex;
+                SelectedItemToCraftIndex = GUILayout.SelectionGrid(SelectedItemToCraftIndex, filteredItemNames, 3, LocalStylingManager.ColoredSelectedGridButton(_SelectedItemToCraftIndex == SelectedItemToCraftIndex));
             }
             GUILayout.EndScrollView();
         }
 
-        private void OnClickCraftSelectedItemButton()
+        protected virtual void OnClickCraftSelectedItemButton()
         {
             try
             {
@@ -1018,36 +1062,8 @@ namespace ModCrafting
                 HandleException(exc, nameof(OnClickCraftSelectedItemButton));
             }
         }
-
-        private void OnClickDestroySelectedItemInRangeButton()
-        {
-            try
-            {
-                string[] inRangeItemNames = GetItemNamesInRange(10f);
-                if (inRangeItemNames != null)
-                {
-                    SelectedGameObjectToDestroyName = inRangeItemNames[SelectedGameObjectToDestroyIndex].Replace(" ", "_");
-                    if (!string.IsNullOrEmpty(SelectedGameObjectToDestroyName))
-                    {
-                        if (ItemsInPlayerActionRange != null)
-                        {
-                            SelectedGameObjectToDestroy = ItemsInPlayerActionRange.Find(i => i.GetComponent<Item>()?.GetName()== SelectedGameObjectToDestroyName);
-                            if (SelectedGameObjectToDestroy != null)
-                            {
-                                SelectedItemToDestroy = SelectedGameObjectToDestroy?.GetComponent<Item>();
-                                ShowConfirmDestroyDialog(SelectedGameObjectToDestroyName);
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception exc)
-            {
-                HandleException(exc, nameof(OnClickDestroySelectedItemInRangeButton));
-            }
-        }
-
-        private void CraftSelectedItem(ItemID itemID)
+                
+        protected virtual void CraftSelectedItem(ItemID itemID)
         {
             try
             {
@@ -1086,7 +1102,7 @@ namespace ModCrafting
                        HUDBigInfoMessage(
                            ItemCraftedMessage(LocalItemsManager.GetInfo(SelectedItemToCraftItemID).GetNameToDisplayLocalized(), CountToCraft),
                            MessageType.Info,
-                           Color.green
+                           LocalStylingManager.DefaultEnabledColor
                        )
                 );
             }
@@ -1117,5 +1133,7 @@ namespace ModCrafting
         {
             EnableCursor(false);
         }
+
     }
+
 }
