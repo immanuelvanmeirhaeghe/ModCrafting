@@ -1,19 +1,19 @@
 <Mod ID="ModCrafting">
-  <Compatible>2.4.2</Compatible>
-  <Button Standard="NumPad1" ID="ModKeybindingId">
+  <Compatible>2.8.0</Compatible>
+  <Button Standard="D8" ID="ShortcutKey">
     <Name>
-      <EN>ModKeybindingId</EN>
+      <EN>Press shortcut key</EN>
     </Name>
     <Description>
-      <EN>ModKeybindingId</EN>
+      <EN>to open main mod screen.</EN>
     </Description>
   </Button>
-  <Button Standard="Subtract" ID="ModDeleteKeybindingId">
+  <Button Standard="Subtract" ID="DeleteShortcutKey">
     <Name>
-      <EN>ModDeleteKeybindingId</EN>
+      <EN>Press shortcut key</EN>
     </Name>
     <Description>
-      <EN>ModDeleteKeybindingId</EN>
+      <EN>to destroy mouse target.</EN>
     </Description>
   </Button>
   <Name>

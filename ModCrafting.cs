@@ -47,7 +47,7 @@ namespace ModCrafting
         private static float ModCraftingScreenStartPositionX { get; set; } = Screen.width / 2f;
         private static float ModCraftingScreenStartPositionY { get; set; } = Screen.height / 2f;
         private static bool IsModCraftingScreenMinimized { get; set; } = false;
-        private static int ModCraftingScreenId { get; set; } = 0;
+        private static int ModCraftingScreenId { get; set; }
         private bool ShowModCraftingScreen { get; set; } = false;
         private bool ShowModCraftingInfo { get; set; } = false;
 
@@ -1083,8 +1083,8 @@ namespace ModCrafting
                 {
                     if (ShouldAddToBackpackOption)
                     {
-                        LocalPlayer.AddItemToInventory(SelectedItemToCraftItemID.ToString());
-                        SelectedItemToCraft = LocalInventoryBackpack.FindItem(SelectedItemToCraftItemID);
+                        LocalPlayer.AddItemToInventory(itemID.ToString());
+                        SelectedItemToCraft = LocalInventoryBackpack.FindItem(itemID);
                     }
                     else
                     {
