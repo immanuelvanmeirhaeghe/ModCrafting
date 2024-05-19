@@ -16,7 +16,7 @@ It allows a player to craft any game item without the needed materials and to de
 
 ## Usage
 
-Press **[Alpha8]** button to open the mod UI.
+Press **[Keypad8]** button to open the mod UI.
 
 Press **[KeypadMinus]** to destroy target mouse (if option enabled).
 
