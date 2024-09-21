@@ -25,7 +25,8 @@ namespace ModCrafting
     {
         private static ModCrafting Instance;
         private static readonly string ModName = nameof(ModCrafting);
-        private static readonly string RuntimeConfiguration = Path.Combine(Application.dataPath.Replace("GH_Data", "Mods"), $"{nameof(RuntimeConfiguration)}.xml");
+        private static readonly string RuntimeConfigurationFile = Path.Combine(Application.dataPath.Replace("GH_Data", "Mods"), "RuntimeConfiguration.xml");
+        public string ModCraftingScreenTitle = $"{ModName} created by [Dragon Legion] Immaanuel#4300";
 
         public ModCrafting()
         {
@@ -103,19 +104,19 @@ namespace ModCrafting
             => $"Only available for single player or when host. Host can activate using ModManager.";
         public string PermissionChangedMessage(string permission, string reason)
             => $"Permission to use mods and cheats in multiplayer was {permission} because {reason}.";
-        public string HUDBigInfoMessage(string message, MessageType messageType, Color? headcolor = null)
-            => $"<color=#{ (headcolor != null ? ColorUtility.ToHtmlStringRGBA(headcolor.Value) : ColorUtility.ToHtmlStringRGBA(Color.red))  }>{messageType}</color>\n{message}";
+        private string HUDBigInfoMessage(string message, MessageType messageType, Color? headcolor = null)
+            => $"<color=#{(headcolor != null ? ColorUtility.ToHtmlStringRGBA(headcolor.Value) : ColorUtility.ToHtmlStringRGBA(Color.red))}>{messageType}</color>\n{message}";
+        private void OnlyForSingleplayerOrWhenHostBox()
+        {
+            using (new GUILayout.HorizontalScope(GUI.skin.box))
+            {
+                GUILayout.Label(OnlyForSinglePlayerOrHostMessage(), LocalStylingManager.ColoredCommentLabel(Color.yellow));
+            }
+        }
 
         public KeyCode ShortcutKey { get; set; } = KeyCode.Keypad9;
         public KeyCode DeleteShortcutKey { get; set; } = KeyCode.KeypadMinus;
         public bool AlsoDestroyCraftedItems { get; private set; }
-
-        protected virtual void Start()
-        {
-            ModManager.ModManager.onPermissionValueChanged += ModManager_onPermissionValueChanged;
-            ShortcutKey = GetShortcutKey(nameof(ShortcutKey));
-            DeleteShortcutKey = GetShortcutKey(nameof(DeleteShortcutKey));
-        }
 
         private void ModManager_onPermissionValueChanged(bool optionValue)
         {
@@ -129,21 +130,22 @@ namespace ModCrafting
                             );
         }
 
-        public void ShowHUDBigInfo(string text, float duration = 3f)
+        private void ShowHUDBigInfo(string text)
         {
             string header = $"{ModName} Info";
             string textureName = HUDInfoLogTextureType.Count.ToString();
-            HUDBigInfo obj = (HUDBigInfo)LocalHUDManager.GetHUD(typeof(HUDBigInfo));
-            HUDBigInfoData.s_Duration = duration;
-            HUDBigInfoData data = new HUDBigInfoData
+
+            HUDBigInfo bigInfo = (HUDBigInfo)LocalHUDManager.GetHUD(typeof(HUDBigInfo));
+            HUDBigInfoData.s_Duration = 2f;
+            HUDBigInfoData bigInfoData = new HUDBigInfoData
             {
                 m_Header = header,
                 m_Text = text,
                 m_TextureName = textureName,
                 m_ShowTime = Time.time
             };
-            obj.AddInfo(data);
-            obj.Show(show: true);
+            bigInfo.AddInfo(bigInfoData);
+            bigInfo.Show(true);
         }
 
         public void ShowHUDInfoLog(string itemID, string localizedTextKey)
@@ -153,83 +155,68 @@ namespace ModCrafting
             messages.AddMessage($"{localization.Get(localizedTextKey)}  {localization.Get(itemID)}");
         }
 
-        public KeyCode GetShortcutKey(string buttonID)
+        protected virtual void Awake()
         {
-            var ConfigurableModList = GetModList();
-            if (ConfigurableModList != null && ConfigurableModList.Count > 0)
-            {
-                SelectedMod = ConfigurableModList.Find(cfgMod => cfgMod.ID == ModName);
-                return SelectedMod.ConfigurableModButtons.Find(cfgButton => cfgButton.ID == buttonID).ShortcutKey;
-            }
-            else
-            {
-                switch (buttonID)
-                {
-                    case nameof(ShortcutKey):
-                        return KeyCode.Keypad9;
-                    case nameof(DeleteShortcutKey):
-                        return KeyCode.KeypadMinus;
-                    default:
-                        return KeyCode.None;
-                }
-            }
+            Instance = this;
         }
 
-        private List<IConfigurableMod> GetModList()
+        protected virtual void OnDestroy()
         {
-            List<IConfigurableMod> modList = new List<IConfigurableMod>();
+            Instance = null;
+        }
+
+        protected virtual void Start()
+        {
+            ModManager.ModManager.onPermissionValueChanged += ModManager_onPermissionValueChanged;
+            InitData();
+            ShortcutKey = GetConfigurableKey(nameof(ShortcutKey));
+            DeleteShortcutKey = GetConfigurableKey(nameof(DeleteShortcutKey));
+        }
+
+        private KeyCode GetConfigurableKey(string buttonId)
+        {
+            KeyCode configuredKeyCode = default;
+            string configuredKeybinding = string.Empty;
+
             try
             {
-                if (File.Exists(RuntimeConfiguration))
+                if (File.Exists(RuntimeConfigurationFile))
                 {
-                    using (XmlReader configFileReader = XmlReader.Create(new StreamReader(RuntimeConfiguration)))
+                    using (var xmlReader = XmlReader.Create(new StreamReader(RuntimeConfigurationFile)))
                     {
-                        while (configFileReader.Read())
+                        while (xmlReader.Read())
                         {
-                            configFileReader.ReadToFollowing("Mod");
-                            do
+                            if (xmlReader["ID"] == ModName)
                             {
-                                string gameID = GameID.GreenHell.ToString();
-                                string modID = configFileReader.GetAttribute(nameof(IConfigurableMod.ID));
-                                string uniqueID = configFileReader.GetAttribute(nameof(IConfigurableMod.UniqueID));
-                                string version = configFileReader.GetAttribute(nameof(IConfigurableMod.Version));
-
-                                var configurableMod = new ConfigurableMod(gameID, modID, uniqueID, version);
-
-                                configFileReader.ReadToDescendant("Button");
-                                do
+                                if (xmlReader.ReadToFollowing(nameof(Button)) && xmlReader["ID"] == buttonId)
                                 {
-                                    string buttonID = configFileReader.GetAttribute(nameof(IConfigurableModButton.ID));
-                                    string buttonKeyBinding = configFileReader.ReadElementContentAsString();
-
-                                    configurableMod.AddConfigurableModButton(buttonID, buttonKeyBinding);
-
-                                } while (configFileReader.ReadToNextSibling("Button"));
-
-                                if (!modList.Contains(configurableMod))
-                                {
-                                    modList.Add(configurableMod);
+                                    configuredKeybinding = xmlReader.ReadElementContentAsString();
                                 }
-
-                            } while (configFileReader.ReadToNextSibling("Mod"));
+                            }
                         }
                     }
                 }
-                return modList;
+
+                configuredKeybinding = configuredKeybinding?.Replace("NumPad", "Keypad").Replace("Oem", "");
+
+                configuredKeyCode = (KeyCode)(!string.IsNullOrEmpty(configuredKeybinding)
+                                                            ? Enum.Parse(typeof(KeyCode), configuredKeybinding)
+                                                            : GetType().GetProperty(buttonId)?.GetValue(this));
+                return configuredKeyCode;
             }
             catch (Exception exc)
             {
-                HandleException(exc, nameof(GetModList));
-                modList = new List<IConfigurableMod>();
-                return modList;
+                HandleException(exc, nameof(GetConfigurableKey));
+                configuredKeyCode = (KeyCode)(GetType().GetProperty(buttonId)?.GetValue(this));
+                return configuredKeyCode;
             }
         }
 
         private void HandleException(Exception exc, string methodName)
         {
-            string info = $"[{ModName}:{methodName}] throws exception -  {exc.TargetSite?.Name}:\n{exc.Message}\n{exc.InnerException}\n{exc.Source}\n{exc.StackTrace}";
+            string info = $"[{ModName}:{methodName}] throws exception:\n{exc}";
             ModAPI.Log.Write(info);
-            Debug.Log(info);
+            ShowHUDBigInfo(HUDBigInfoMessage(exc.Message, MessageType.Error, Color.red));
         }
 
         protected virtual void Update()
@@ -301,12 +288,15 @@ namespace ModCrafting
 
         protected virtual void ShowModCraftingWindow()
         {
-            if (ModCraftingScreenId <= 0)
-            {
-                ModCraftingScreenId = ModCraftingScreen.GetHashCode();
-            }
-            string ModCraftingScreenTitle = $"{ModName} created by [Dragon Legion] Immaanuel#4300";
-            ModCraftingScreen = GUILayout.Window(ModCraftingScreenId, ModCraftingScreen, InitModCraftingScreen, ModCraftingScreenTitle, GUI.skin.window, GUILayout.ExpandWidth(true), GUILayout.MinWidth(ModCraftingScreenMinWidth), GUILayout.MaxWidth(ModCraftingScreenMaxWidth), GUILayout.ExpandHeight(true), GUILayout.MinHeight(ModCraftingScreenMinHeight), GUILayout.MaxHeight(ModCraftingScreenMaxHeight));
+            ModCraftingScreenId = GetHashCode();            
+            ModCraftingScreen = GUILayout.Window(ModCraftingScreenId, ModCraftingScreen, InitModCraftingScreen, ModCraftingScreenTitle,
+                GUI.skin.window,
+                GUILayout.ExpandWidth(true),
+                GUILayout.MinWidth(ModCraftingScreenMinWidth),
+                GUILayout.MaxWidth(ModCraftingScreenMaxWidth),
+                GUILayout.ExpandHeight(true),
+                GUILayout.MinHeight(ModCraftingScreenMinHeight),
+                GUILayout.MaxHeight(ModCraftingScreenMaxHeight));
         }
 
         protected virtual void InitData()
@@ -328,6 +318,7 @@ namespace ModCrafting
         {
             ModCraftingScreenStartPositionX = ModCraftingScreen.x;
             ModCraftingScreenStartPositionY = ModCraftingScreen.y;
+            ModCraftingScreenTotalWidth = ModCraftingScreen.width;
 
             using (new GUILayout.VerticalScope(GUI.skin.box))
             {
@@ -411,14 +402,6 @@ namespace ModCrafting
             else
             {
                 OnlyForSingleplayerOrWhenHostBox();
-            }
-        }
-
-        protected virtual void OnlyForSingleplayerOrWhenHostBox()
-        {
-            using (new GUILayout.HorizontalScope(GUI.skin.box))
-            {
-                GUILayout.Label(OnlyForSinglePlayerOrHostMessage(), LocalStylingManager.ColoredCommentLabel(LocalStylingManager.DefaultAttentionColor));
             }
         }
 
