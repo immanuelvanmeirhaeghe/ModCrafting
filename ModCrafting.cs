@@ -155,6 +155,70 @@ namespace ModCrafting
             messages.AddMessage($"{localization.Get(localizedTextKey)}  {localization.Get(itemID)}");
         }
 
+        public KeyCode GetShortcutKey(string buttonID)
+        {
+            var ConfigurableModList = GetModList();
+            if (ConfigurableModList != null && ConfigurableModList.Count > 0)
+            {
+                SelectedMod = ConfigurableModList.Find(cfgMod => cfgMod.ID == ModName);
+                return SelectedMod.ConfigurableModButtons.Find(cfgButton => cfgButton.ID == buttonID).ShortcutKey;
+            }
+            else
+            {
+                return KeyCode.Keypad8;
+            }
+        }
+
+        private List<IConfigurableMod> GetModList()
+        {
+            List<IConfigurableMod> modList = new List<IConfigurableMod>();
+            try
+            {
+                if (File.Exists(RuntimeConfigurationFile))
+                {
+                    using (XmlReader configFileReader = XmlReader.Create(new StreamReader(RuntimeConfigurationFile)))
+                    {
+                        while (configFileReader.Read())
+                        {
+                            configFileReader.ReadToFollowing("Mod");
+                            do
+                            {
+                                string gameID = GameID.GreenHell.ToString();
+                                string modID = configFileReader.GetAttribute(nameof(IConfigurableMod.ID));
+                                string uniqueID = configFileReader.GetAttribute(nameof(IConfigurableMod.UniqueID));
+                                string version = configFileReader.GetAttribute(nameof(IConfigurableMod.Version));
+
+                                var configurableMod = new ConfigurableMod(gameID, modID, uniqueID, version);
+
+                                configFileReader.ReadToDescendant("Button");
+                                do
+                                {
+                                    string buttonID = configFileReader.GetAttribute(nameof(IConfigurableModButton.ID));
+                                    string buttonKeyBinding = configFileReader.ReadElementContentAsString();
+
+                                    configurableMod.AddConfigurableModButton(buttonID, buttonKeyBinding);
+
+                                } while (configFileReader.ReadToNextSibling("Button"));
+
+                                if (!modList.Contains(configurableMod))
+                                {
+                                    modList.Add(configurableMod);
+                                }
+
+                            } while (configFileReader.ReadToNextSibling("Mod"));
+                        }
+                    }
+                }
+                return modList;
+            }
+            catch (Exception exc)
+            {
+                HandleException(exc, nameof(GetModList));
+                modList = new List<IConfigurableMod>();
+                return modList;
+            }
+        }
+
         protected virtual void Awake()
         {
             Instance = this;
@@ -169,47 +233,8 @@ namespace ModCrafting
         {
             ModManager.ModManager.onPermissionValueChanged += ModManager_onPermissionValueChanged;
             InitData();
-            ShortcutKey = GetConfigurableKey(nameof(ShortcutKey));
-            DeleteShortcutKey = GetConfigurableKey(nameof(DeleteShortcutKey));
-        }
-
-        private KeyCode GetConfigurableKey(string buttonId)
-        {
-            KeyCode configuredKeyCode = default;
-            string configuredKeybinding = string.Empty;
-
-            try
-            {
-                if (File.Exists(RuntimeConfigurationFile))
-                {
-                    using (var xmlReader = XmlReader.Create(new StreamReader(RuntimeConfigurationFile)))
-                    {
-                        while (xmlReader.Read())
-                        {
-                            if (xmlReader["ID"] == ModName)
-                            {
-                                if (xmlReader.ReadToFollowing(nameof(Button)) && xmlReader["ID"] == buttonId)
-                                {
-                                    configuredKeybinding = xmlReader.ReadElementContentAsString();
-                                }
-                            }
-                        }
-                    }
-                }
-
-                configuredKeybinding = configuredKeybinding?.Replace("NumPad", "Keypad").Replace("Oem", "");
-
-                configuredKeyCode = (KeyCode)(!string.IsNullOrEmpty(configuredKeybinding)
-                                                            ? Enum.Parse(typeof(KeyCode), configuredKeybinding)
-                                                            : GetType().GetProperty(buttonId)?.GetValue(this));
-                return configuredKeyCode;
-            }
-            catch (Exception exc)
-            {
-                HandleException(exc, nameof(GetConfigurableKey));
-                configuredKeyCode = (KeyCode)(GetType().GetProperty(buttonId)?.GetValue(this));
-                return configuredKeyCode;
-            }
+            ShortcutKey = GetShortcutKey(nameof(ShortcutKey));
+            DeleteShortcutKey = GetShortcutKey(nameof(DeleteShortcutKey));
         }
 
         private void HandleException(Exception exc, string methodName)
@@ -346,7 +371,7 @@ namespace ModCrafting
             string CollapseButtonText = IsModCraftingScreenMinimized ? "O" : "-";
             if (GUI.Button(new Rect(ModCraftingScreen.width - 40f, 0f, 20f, 20f), CollapseButtonText, GUI.skin.button))
             {
-                CollapseWindow();
+                CollapseModCraftingWindow();
             }
 
             if (GUI.Button(new Rect(ModCraftingScreen.width - 20f, 0f, 20f, 20f), "X", GUI.skin.button))
@@ -355,16 +380,16 @@ namespace ModCrafting
             }
         }
 
-        protected virtual void CollapseWindow()
+        protected virtual void CollapseModCraftingWindow()
         {
             if (!IsModCraftingScreenMinimized)
             {
-                ModCraftingScreen = new Rect(ModCraftingScreenStartPositionX, ModCraftingScreenStartPositionY, ModCraftingScreenTotalWidth, ModCraftingScreenMinHeight);
+                ModCraftingScreen = new Rect(ModCraftingScreen.x, ModCraftingScreen.y, ModCraftingScreenTotalWidth, ModCraftingScreenMinHeight);
                 IsModCraftingScreenMinimized = true;
             }
             else
             {
-                ModCraftingScreen = new Rect(ModCraftingScreenStartPositionX, ModCraftingScreenStartPositionY, ModCraftingScreenTotalWidth, ModCraftingScreenTotalHeight);
+                ModCraftingScreen = new Rect(ModCraftingScreen.x, ModCraftingScreen.y, ModCraftingScreenTotalWidth, ModCraftingScreenTotalHeight);
                 IsModCraftingScreenMinimized = false;
             }
             ShowModCraftingWindow();
